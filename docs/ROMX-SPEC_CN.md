@@ -58,7 +58,7 @@ Payload 必须是目标模拟器核心可以直接接收的标准 ROM 原始字�
 
 Metadata 是可选的 UTF-8 JSON，不能带 BOM。顶层值必须是符合 `schema/romx-metadata.schema.json` 的 object。`metadata_offset` 和 `metadata_size` 定位容器中的 JSON 字节。格式错误的 metadata 可以被忽略，ROM 仍可读取。
 
-`platform` 和 `payload_format` 只描述 payload，不得覆盖可信的 ROM Header，也不得改变提取行为。
+`platform` 和 `payload_format` 只描述 payload，不会改变提取行为。Game Boy CGB flag 为 `0xC0` 时必须分类为 `gbc`；为 `0x80` 时必须使用有效的 `gb` 或 `gbc` `payload_format`，不得猜测。其他字节值不覆盖有效的 `payload_format`。
 
 ## 5. Cover 数据区
 

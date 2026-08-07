@@ -58,7 +58,7 @@ The filename extension is only a hint. The container extension is the original R
 
 Metadata is optional UTF-8 JSON without a BOM. The top-level value must be an object conforming to `schema/romx-metadata.schema.json`. `metadata_offset` and `metadata_size` locate the exact JSON bytes in the container. Unknown namespaced fields may be preserved; malformed metadata may be ignored while the ROM remains readable.
 
-The metadata `platform` and `payload_format` fields describe the payload. They do not override a trusted ROM header or alter extraction.
+The metadata `platform` and `payload_format` fields describe the payload and do not alter extraction. For a Game Boy CGB flag of `0xC0`, the reader must classify the payload as `gbc`; for `0x80`, it must use a valid `payload_format` of `gb` or `gbc` rather than guessing. Other byte values do not override a valid `payload_format`.
 
 ## 5. Cover region
 

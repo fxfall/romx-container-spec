@@ -20,6 +20,7 @@ import hashlib
 import json
 import struct
 import sys
+import zlib
 from pathlib import Path
 from typing import Iterable
 from typing import Any
@@ -44,6 +45,26 @@ class RomxError(ValueError):
 
 def sha256(data: bytes) -> bytes:
     return hashlib.sha256(data).digest()
+
+
+def crc32(data: bytes) -> str:
+    return f"{zlib.crc32(data) & 0xffffffff:08x}"
+
+
+def classify_gb_payload(rom: bytes, payload_format: str | None) -> str:
+    """Apply the Game Boy CGB flag policy from the ROMX platform rules."""
+    if len(rom) <= 0x143:
+        raise RomxError("GB ROM is too small to contain CGB flag")
+    flag = rom[0x143]
+    if flag == 0xC0:
+        return "gbc"
+    if flag == 0x80:
+        if payload_format in {"gb", "gbc"}:
+            return payload_format
+        raise RomxError("dual GB/GBC ROM requires payload_format gb or gbc")
+    if payload_format in {"gb", "gbc"}:
+        return payload_format
+    raise RomxError("GB ROM requires payload_format gb or gbc")
 
 
 def _validate_metadata(value: Any) -> dict[str, Any]:
@@ -198,6 +219,8 @@ def _virtual_path(value: str) -> Path:
 
 
 def _platform_for(payload_format: str, playlist_name: str = "") -> str:
+    if payload_format in {"gb", "gbc"}:
+        return payload_format
     name = playlist_name.lower()
     for marker, platform in (("gbc", "gbc"), ("gba", "gba"), ("3ds", "3ds"), ("nds", "nds"), ("snes", "snes"), ("genesis", "genesis"), ("gb", "gb"), ("nes", "nes")):
         if marker in name:
@@ -260,8 +283,12 @@ def import_lpl(
         payload_format = rom_path.suffix.lower().lstrip(".")
         if payload_format not in {"gb", "gbc", "gba", "nes", "fds", "sfc", "smc", "nds", "3ds", "cci", "cia", "md", "gen", "smd", "bin"}:
             raise RomxError(f"unsupported ROM extension in LPL item {index}: {rom_path.suffix}")
+        rom_bytes = rom_path.read_bytes()
+        if payload_format in {"gb", "gbc"}:
+            payload_format = classify_gb_payload(rom_bytes, payload_format)
         label = item.get("label") or rom_path.stem
         metadata: dict[str, Any] = {"schema_version": "1.0", "label": str(label), "platform": _platform_for(payload_format, playlist_name), "payload_format": payload_format}
+        metadata["crc32"] = crc32(rom_bytes)
         cover_path: Path | None = None
         if force_cover_dir:
             cover_path = _find_import_file(force_cover_dir / f"{rom_path.stem}.png", (force_cover_dir / f"{label}.png",))
@@ -334,7 +361,7 @@ def export_lpl(
             (actual_cover_dir / f"{_safe_filename(label)}.png").write_bytes(cover)
         prefix = lpl_rom_prefix or f"/roms/{playlist}"
         lpl_item_path = str(Path(prefix) / filename).replace("\\", "/")
-        items.append({"path": lpl_item_path, "label": label, "core_path": "DETECT", "core_name": "DETECT", "crc32": f"{playlist}.lpl", "db_name": ""})
+        items.append({"path": lpl_item_path, "label": label, "core_path": "DETECT", "core_name": "DETECT", "crc32": f"{crc32(rom)}|crc", "db_name": ""})
     actual_lpl.parent.mkdir(parents=True, exist_ok=True)
     actual_lpl.write_text(json.dumps({"version": "1.5", "default_core_path": "DETECT", "default_core_name": "DETECT", "label_display_mode": 0, "right_thumbnail_mode": 0, "left_thumbnail_mode": 0, "thumbnail_match_mode": 0, "sort_mode": 0, "items": items}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return len(items)

@@ -22,4 +22,14 @@
 
 These hints are identification aids only. A reader must not claim a platform from an ambiguous extension alone. A trusted ROM header takes priority over metadata and filename hints.
 
+### Game Boy CGB flag
+
+For Game Boy payloads, inspect the CGB flag at ROM header offset `0x143`:
+
+- `0xC0`: classify as `gbc` regardless of filename or playlist.
+- `0x80`: the ROM is compatible with both GB and GBC. Use the valid ROMX `payload_format` (`gb` or `gbc`) as the classification; do not guess.
+- Any other value: retain the already valid `payload_format` (`gb` or `gbc`); do not infer a new classification from that byte alone.
+
+A missing or invalid `payload_format` makes a `0x80` ROM ambiguous and should be reported to the user.
+
 The ROMX container extension is the original ROM extension plus `x`: `.gba` becomes `.gbax`, `.sfc` becomes `.sfcx`, and `.cia` becomes `.ciax`.

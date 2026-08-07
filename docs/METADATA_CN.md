@@ -37,9 +37,7 @@ Metadata 是内嵌在 ROMX 容器中的可选 UTF-8 JSON object。它由 footer 
 
 | 字段 | 类型 | 含义 |
 |---|---|---|
-| `crc32` | string | 小写 8 位十六进制 |
-| `md5` | string | 小写 32 位十六进制 |
-| `sha1` | string | 小写 40 位十六进制 |
+| `crc32` | string | 小写 8 位十六进制；用于 RetroArch/数据库匹配 |
 | `header_title` | string | 从 ROM Header 读取的标题 |
 | `header_id` | string | 从 ROM Header 读取的标识符 |
 | `dump_status` | string | Schema 定义的枚举值之一 |
@@ -48,7 +46,7 @@ Metadata 是内嵌在 ROMX 容器中的可选 UTF-8 JSON object。它由 footer 
 | `cover.width` / `height` | integer | 像素尺寸 |
 | `cover.sha256` | string | 内嵌 cover 字节的 SHA-256 |
 
-权威的 ROM SHA-256 保存在 footer 中，不在 metadata 重复保存。Cover object 不包含文件系统路径、待访问 URL、命令、凭据或脚本。
+`crc32` 用于 RetroArch 和 ROM 数据库匹配，通常与 ROM size 一起使用。权威的 ROM SHA-256 保存在 footer 中，只负责完整性校验，不作为数据库匹配键。MD5 和 SHA-1 不再存储；如果某个 provider 要求其他 hash，可以按需计算。Cover object 不包含文件系统路径、待访问 URL、命令、凭据或脚本。
 
 ## 扩展字段
 

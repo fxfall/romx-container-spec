@@ -25,8 +25,6 @@
   "description": "A complete ROMX metadata example.",
   "tags": ["verified", "cartridge"],
   "crc32": "1234abcd",
-  "md5": "0123456789abcdef0123456789abcdef",
-  "sha1": "0123456789abcdef0123456789abcdef01234567",
   "header_title": "EXAMPLE GAME",
   "header_id": "ABCD",
   "dump_status": "good",

@@ -37,9 +37,7 @@ Metadata is an optional UTF-8 JSON object embedded in the ROMX container. It is 
 
 | Field | Type | Meaning |
 |---|---|---|
-| `crc32` | string | Lowercase 8-digit hexadecimal |
-| `md5` | string | Lowercase 32-digit hexadecimal |
-| `sha1` | string | Lowercase 40-digit hexadecimal |
+| `crc32` | string | Lowercase 8-digit hexadecimal; the RetroArch/database lookup key |
 | `header_title` | string | Title read from the ROM header |
 | `header_id` | string | Identifier read from the ROM header |
 | `dump_status` | string | One of the values defined by the schema |
@@ -48,7 +46,7 @@ Metadata is an optional UTF-8 JSON object embedded in the ROMX container. It is 
 | `cover.width` / `height` | integer | Pixel dimensions |
 | `cover.sha256` | string | SHA-256 of embedded cover bytes |
 
-The authoritative ROM SHA-256 is in the footer and is not repeated in metadata. The cover object does not contain a filesystem path, URL to fetch, command, credential, or script.
+`crc32` is used for RetroArch and ROM database lookup, normally together with ROM size. The authoritative ROM SHA-256 is in the footer for integrity and is not a database lookup key. MD5 and SHA-1 are intentionally not stored; providers that require another hash may calculate it on demand. The cover object does not contain a filesystem path, URL to fetch, command, credential, or script.
 
 ## Extensions
 

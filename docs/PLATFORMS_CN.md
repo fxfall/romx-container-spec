@@ -22,4 +22,14 @@
 
 这些内容只是识别辅助。读取器不能仅凭有歧义的扩展名判断平台。可信 ROM Header 优先于 metadata 和文件名提示。
 
+### Game Boy CGB flag
+
+Game Boy payload 应检查 ROM Header 偏移 `0x143` 的 CGB flag：
+
+- `0xC0`：无论文件名或 playlist 如何，强制分类为 `gbc`；
+- `0x80`：表示同时兼容 GB/GBC，使用有效 ROMX `payload_format`（`gb` 或 `gbc`）分类，不得猜测；
+- 其他值：保留已经有效的 `payload_format`（`gb` 或 `gbc`），不能仅凭该字节推断新的分类。
+
+`0x80` ROM 如果缺少或没有有效的 `payload_format`，必须报告为分类不明确。
+
 ROMX 容器扩展名是在原 ROM 扩展名后追加 `x`：`.gba` 变为 `.gbax`，`.sfc` 变为 `.sfcx`，`.cia` 变为 `.ciax`。
