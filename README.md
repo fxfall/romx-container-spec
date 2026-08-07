@@ -3,6 +3,14 @@ An open ROM container specification for emulator frontends, game libraries, and 
 
 # ROMX
 
+## English Introduction
+
+ROMX is an open ROM container specification for emulator frontends, game libraries, and archival workflows. It packages an unmodified ROM, embedded UTF-8 metadata, an optional PNG cover, and verifiable offsets and SHA-256 digests. The canonical container extension is the original ROM extension plus `x` (for example, `.gba` becomes `.gbax`).
+
+This repository contains the binary specification, metadata schema, platform rules, and examples. It is **ROMX 1.0 Draft 1** and is not yet a frozen standard.
+
+See the [binary specification](docs/ROMX-SPEC.md), [metadata reference](docs/METADATA.md), [platform rules](docs/PLATFORMS.md), and [container structure](docs/FILE-STRUCTURE.md).
+
 ## 中文介绍
 
 ROMX 是一个面向模拟器前端、游戏库工具和归档工具的开放 ROM 容器规范草案。

@@ -1,3 +1,11 @@
+# Platforms and Payload Formats
+
+`platform` identifies the platform; `payload_format` identifies the standard ROM format that the emulator core receives after extraction.
+
+Use lowercase ASCII IDs. A new platform must define at least one payload format and a recognition strategy. Do not identify ambiguous formats such as `.bin` by extension alone. The container extension is the original ROM extension plus `x` (for example, `.gba` becomes `.gbax`). Readers must validate the ROMX footer.
+
+---
+
 # 平台与 Payload 格式
 
 `platform` 表示平台，`payload_format` 表示实际 ROM 格式。一个平台可以对应多个格式。
