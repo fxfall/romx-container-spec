@@ -54,7 +54,7 @@ SHA-256 的权威值存放在 footer，不需要在 metadata 重复保存。
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `cover` | object | 嵌入封面的描述 |
-| `cover.mime_type` | string | `image/png`、`image/jpeg`、`image/webp` |
+| `cover.mime_type` | string | 固定为 `image/png` |
 | `cover.width` | integer | 像素宽度 |
 | `cover.height` | integer | 像素高度 |
 | `cover.sha256` | string | cover 数据 SHA-256 |

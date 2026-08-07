@@ -55,7 +55,7 @@ v1 不支持 ROM 压缩和加密。未来若增加，必须提升主版本或使
 
 ## 5. Cover
 
-v1 允许嵌入一个 cover，格式为 PNG、JPEG 或 WebP。格式必须通过文件签名识别，不能只相信 metadata。
+v1 允许嵌入一个 PNG cover。必须通过 PNG 文件签名识别，不能只相信 metadata。
 
 建议限制：
 
