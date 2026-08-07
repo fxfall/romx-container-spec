@@ -1,17 +1,13 @@
-# File Structure
+# ROMX File Structure
 
-## ROMX container
+## On-disk layout
 
 ```text
-┌──────────────────────────────┐
-│ ROM payload                  │  Unmodified standard ROM
-├──────────────────────────────┤
-│ Metadata JSON                │  Embedded UTF-8 JSON
-├──────────────────────────────┤
-│ Cover image                  │  Optional PNG
-├──────────────────────────────┤
-│ ROMX footer                  │  Fixed 128 bytes
-└──────────────────────────────┘
+ROM payload | embedded metadata JSON | optional embedded PNG cover | 128-byte footer
 ```
 
-Readers must use footer offsets and sizes; they must not depend on region order. ROM, metadata, and cover regions must not overlap or cover the footer.
+This is the recommended write order, not a reader requirement. The footer is always last. Readers locate each region from `*_offset` and `*_size` and must reject overlapping regions or regions that reach into the footer.
+
+## Repository layout
+
+The repository contains the English specification in `docs/`, the normative metadata schema in `schema/`, sample metadata in `examples/`, and the reference implementation in `tools/romx.py`.

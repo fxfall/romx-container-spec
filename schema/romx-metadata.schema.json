@@ -76,8 +76,7 @@
         "mime_type": { "const": "image/png" },
         "width": { "type": "integer", "minimum": 1, "maximum": 8192 },
         "height": { "type": "integer", "minimum": 1, "maximum": 8192 },
-        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
-        "source": { "type": "string", "maxLength": 2048 }
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
       },
       "required": ["mime_type"],
       "additionalProperties": false

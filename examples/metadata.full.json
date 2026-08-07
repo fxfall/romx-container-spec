@@ -24,7 +24,6 @@
   },
   "description": "A complete ROMX metadata example.",
   "tags": ["verified", "cartridge"],
-  "rom_size": 16777216,
   "crc32": "1234abcd",
   "md5": "0123456789abcdef0123456789abcdef",
   "sha1": "0123456789abcdef0123456789abcdef01234567",
@@ -35,20 +34,7 @@
     "mime_type": "image/png",
     "width": 600,
     "height": 850,
-    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    "source": "https://example.invalid/cover/ABCD"
-  },
-  "source": {
-    "name": "Example Database",
-    "id": "gba/ABCD",
-    "url": "https://example.invalid/games/ABCD",
-    "retrieved_at": "2026-08-07T12:00:00Z"
-  },
-  "emulation": {
-    "preferred_core": "mgba",
-    "compatible_cores": ["mgba"],
-    "bios": [],
-    "notes": "Core choice is advisory and must not override user settings."
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
   },
   "x-org.example-rating": 4.5
 }

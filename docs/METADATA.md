@@ -1,46 +1,39 @@
-# Metadata Reference
+# ROMX Metadata 1.0
 
-ROMX metadata is embedded UTF-8 JSON with no external path.
+Metadata is an optional UTF-8 JSON object embedded in the ROMX container. It is located by the footer and never by an external path. The normative field constraints are in `schema/romx-metadata.schema.json`.
 
 ## Required fields
 
 | Field | Type | Meaning |
 |---|---|---|
-| `schema_version` | string | Metadata schema version; v1 is `1.0` |
+| `schema_version` | string | Must be `1.0` |
 | `label` | string | Display title |
-| `platform` | string | ROMX platform ID |
-| `payload_format` | string | Extracted ROM format, without a dot |
-
-Optional fields describe alternate titles, release data, ROM identifiers, hashes, and an embedded cover. The authoritative ROM SHA-256 is in the footer. Cover `mime_type` is always `image/png`.
+| `platform` | string | Platform ID from `PLATFORMS.md` |
+| `payload_format` | string | Extracted ROM format, without a leading dot |
 
 ## Optional fields
 
-### Identity and titles
+### Identity and release data
 
 | Field | Type | Meaning |
 |---|---|---|
 | `sort_label` | string | Sort title |
 | `original_label` | string | Original release title |
-| `alternative_labels` | object | Language code to title map |
-| `game_id` | string | Platform or database ID |
+| `alternative_labels` | object | Language tag to title map |
+| `game_id` | string | Platform or database identifier |
 | `serial` | string | Cartridge or release serial |
 | `version` | string | Game version or revision |
-
-### Release information
-
-| Field | Type | Meaning |
-|---|---|---|
 | `developer` | string | Developer |
 | `publisher` | string | Publisher |
-| `release_date` | string | ISO 8601 date, preferably `YYYY-MM-DD` |
-| `genre` | string[] | Genre list |
-| `region` | string[] | Region codes such as `USA`, `JPN`, `EUR` |
+| `release_date` | string | `YYYY`, `YYYY-MM`, or `YYYY-MM-DD` |
+| `genre` | string[] | Genre labels |
+| `region` | string[] | Region codes |
 | `languages` | string[] | BCP 47 language tags |
-| `players` | object | `min` and `max` players |
+| `players` | object | Required `min` and `max` integers |
 | `description` | string | Plain-text description |
-| `tags` | string[] | User or tool tags |
+| `tags` | string[] | User or tool labels |
 
-### ROM information
+### ROM and cover data
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -48,18 +41,15 @@ Optional fields describe alternate titles, release data, ROM identifiers, hashes
 | `md5` | string | Lowercase 32-digit hexadecimal |
 | `sha1` | string | Lowercase 40-digit hexadecimal |
 | `header_title` | string | Title read from the ROM header |
-| `header_id` | string | Game code from the header |
-| `dump_status` | string | `unknown`, `good`, `bad`, `overdump`, `hack`, `translation`, or `homebrew` |
-
-### Cover
-
-| Field | Type | Meaning |
-|---|---|---|
-| `cover` | object | Embedded cover description |
+| `header_id` | string | Identifier read from the ROM header |
+| `dump_status` | string | One of the values defined by the schema |
+| `cover` | object | Description of the embedded PNG |
 | `cover.mime_type` | string | Always `image/png` |
-| `cover.width` | integer | Width in pixels |
-| `cover.height` | integer | Height in pixels |
-| `cover.sha256` | string | SHA-256 of cover bytes |
-| `cover.source` | string | Human-readable source; never an automatic fetch instruction |
+| `cover.width` / `height` | integer | Pixel dimensions |
+| `cover.sha256` | string | SHA-256 of embedded cover bytes |
 
-Non-standard fields must use the `x-` prefix. Metadata must not contain external paths, executable commands, credentials, or scripts.
+The authoritative ROM SHA-256 is in the footer and is not repeated in metadata. The cover object does not contain a filesystem path, URL to fetch, command, credential, or script.
+
+## Extensions
+
+Non-standard fields must begin with `x-` and match the schema pattern. Readers may ignore unknown extensions but should preserve them when rewriting metadata.
