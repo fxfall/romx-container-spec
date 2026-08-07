@@ -98,4 +98,4 @@ v1 允许嵌入一个 cover，格式为 PNG、JPEG 或 WebP。格式必须通过
 <rom_sha256>.<payload_format>
 ```
 
-数据库应保存原始 `.romx` 路径；模拟核心只接收提取后的标准 ROM 路径。
+数据库应保存原始容器路径（例如 `.gbax`）；模拟核心只接收提取后的标准 ROM 路径。

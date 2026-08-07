@@ -31,11 +31,11 @@
 ## 文件名建议
 
 ```text
-Title.nes.romx
-Title.sfc.romx
-Title.nds.romx
-Title.md.romx
-Title.cia.romx
+Title.nesx
+Title.sfcx
+Title.ndsx
+Title.mdx
+Title.ciax
 ```
 
 双扩展名只提供提示，不是安全边界。读取器必须检查 ROMX footer。

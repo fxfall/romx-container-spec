@@ -22,16 +22,16 @@ ROMX 不定义模拟器核心行为，不修改 ROM 内容，也不用于绕过�
 
 ### 推荐文件名
 
-规范扩展名统一使用 `.romx`：
+规范扩展名为原始 ROM 扩展名后追加 `x`：
 
 ```text
-Game Name.gba.romx
-Game Name.nes.romx
-Game Name.nds.romx
-Game Name.cia.romx
+Game Name.gbax
+Game Name.nesx
+Game Name.ndsx
+Game Name.ciax
 ```
 
-最后一个扩展名始终是 `.romx`；倒数第二个扩展名仅作为人类提示，读取器必须以 footer、metadata 和 ROM Header 为准。
+扩展名由原始 ROM 扩展名加上后缀 `x` 构成；读取器必须以 footer、metadata 和 ROM Header 为准。
 
 ### 文档
 
@@ -86,16 +86,16 @@ The current version is **ROMX 1.0 Draft 1**. It is intended for discussion and i
 
 ### Recommended filenames
 
-The canonical extension is `.romx`:
+The canonical extension appends `x` to the original ROM extension:
 
 ```text
-Game Name.gba.romx
-Game Name.nes.romx
-Game Name.nds.romx
-Game Name.cia.romx
+Game Name.gbax
+Game Name.nesx
+Game Name.ndsx
+Game Name.ciax
 ```
 
-The final extension is always `.romx`; the preceding extension is only a human-readable hint. Readers must rely on the footer, metadata, and ROM header.
+The filename extension is the original ROM extension with a trailing `x`. Readers must rely on the footer, metadata, and ROM header.
 
 ### Documentation
 
