@@ -30,9 +30,13 @@ python3 tools/romx.py pack game.gba metadata.json -o game.gbax --cover cover.png
 python3 tools/romx.py inspect game.gbax
 python3 tools/romx.py verify game.gbax
 python3 tools/romx.py extract game.gbax extracted/
+python3 tools/romx.py import-lpl playlist.lpl -o romx-out --rom-root /path/to/rom-root --cover-root /path/to/thumbnails
+python3 tools/romx.py export-lpl romx-out -o retroarch-out
 ```
 
 The script is an implementation guide and validation aid, not a production packer.
+
+`import-lpl` creates sequential names such as `000001.gbcx`, matching each LPL item to a ROM and (when available) `Named_Snaps/<rom-stem>.png`. Use `--rom-dir` and `--cover-dir` to force flat lookup directories. `export-lpl` writes the default RetroArch layout: `playlists/`, `roms/<playlist>/`, and `thumbnails/<playlist>/Named_Snaps/`; use `--lpl-path`, `--rom-dir`, and `--cover-dir` to override those destinations.
 
 ## 中文介绍
 
@@ -55,3 +59,12 @@ ROMX 文件包含：
 - [Metadata 参数（中文）](docs/METADATA_CN.md)
 - [平台与 Payload 格式（中文）](docs/PLATFORMS_CN.md)
 - [文件结构（中文）](docs/FILE-STRUCTURE_CN.md)
+
+参考脚本也支持：
+
+```bash
+python3 tools/romx.py import-lpl playlist.lpl -o romx-out --rom-root /path/to/rom-root --cover-root /path/to/thumbnails
+python3 tools/romx.py export-lpl romx-out -o retroarch-out
+```
+
+`import-lpl` 会生成 `000001.gbcx` 形式的连续 ROMX 文件，并按 ROM 文件名匹配 `Named_Snaps/<rom-stem>.png`。可用 `--rom-dir` 和 `--cover-dir` 强制指定平铺目录。`export-lpl` 默认生成 RetroArch 的 `playlists/`、`roms/<playlist>/` 和 `thumbnails/<playlist>/Named_Snaps/` 结构，也可以用 `--lpl-path`、`--rom-dir`、`--cover-dir` 指定输出位置。
