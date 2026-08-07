@@ -1,21 +1,4 @@
-# Metadata Reference
-
-ROMX metadata is embedded UTF-8 JSON. It has no external path. The required fields are:
-
-| Field | Type | Meaning |
-|---|---|---|
-| `schema_version` | string | Metadata schema version; v1 is `1.0` |
-| `label` | string | Display title |
-| `platform` | string | ROMX platform ID |
-| `payload_format` | string | Extracted ROM format, without a dot |
-
-Optional fields cover titles, release data, ROM identifiers, hashes, embedded cover metadata, and namespaced `x-` extensions. The authoritative ROM SHA-256 is in the footer, not metadata. Cover `mime_type` is always `image/png`.
-
-Metadata must not contain external path references, executable commands, credentials, or embedded scripts.
-
----
-
-# Metadata 参数
+# 元数据参数
 
 ROMX metadata 使用 UTF-8 JSON object。标准标题字段为 `label`。
 

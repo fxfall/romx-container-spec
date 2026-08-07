@@ -1,37 +1,3 @@
-# ROMX 1.0 Binary Specification
-
-Status: Draft 1  
-Integer encoding: Little Endian  
-Footer size: 128 bytes
-
-## Layout
-
-A ROMX file contains an unmodified ROM payload, embedded UTF-8 metadata JSON, an optional embedded PNG cover, and a fixed footer. The footer is the final 128 bytes and locates every data region.
-
-## Footer
-
-The footer starts with ASCII `ROMX`, version `1`, and stores offsets and sizes for the ROM, metadata, and cover. It also stores the ROM SHA-256, flags, footer size, and an optional SHA-256 over the bytes before the footer. All offsets and sizes must be within the footer boundary and regions must not overlap.
-
-Flags: `HAS_METADATA`, `HAS_COVER`, and `HAS_BODY_SHA256` occupy bits 0–2; bits 3–31 are reserved and must be zero in v1.
-
-## Payload and metadata
-
-The ROM payload must be directly loadable standard ROM data: no padding, header removal, byte swapping, or modification. Metadata is embedded in the container and located only through `metadata_offset` and `metadata_size`; it must not depend on an external path. Metadata is UTF-8 JSON with a top-level object. Unknown fields may be preserved.
-
-## Cover
-
-v1 permits one embedded PNG cover. Validate its PNG signature and enforce implementation limits before decoding.
-
-## Reading and errors
-
-Readers must validate the footer, bounds, non-overlap, metadata and cover limits, then verify `rom_sha256` and (when flagged) `body_sha256`. Invalid ROM data or footer rejects the container; invalid metadata or cover may be ignored. A trusted ROM header takes precedence over conflicting metadata or filename hints.
-
-## Atomic extraction
-
-Extract to a temporary file, verify size and hashes, then atomically rename it. The emulator core receives only the extracted standard ROM.
-
----
-
 # ROMX 1.0 二进制规范
 
 状态：Draft 1  
@@ -82,7 +48,7 @@ v1 不支持 ROM 压缩和加密。未来若增加，必须提升主版本或使
 - 编码必须为 UTF-8，不允许 BOM。
 - 顶层必须为 JSON object。
 - metadata 已嵌入容器本体，由 footer 的 `metadata_offset` 和 `metadata_size` 定位；不定义外部路径。
-- 标准字段见 `METADATA.md` 和 JSON Schema。
+- 标准字段见 `METADATA_CN.md` 和 JSON Schema。
 - 读取器应兼容未知字段。
 - 严格写入器不得生成尾逗号；兼容读取器可以选择容忍尾逗号。
 - metadata 不可信，所有字符串长度、数组长度和显示内容均需限制。
