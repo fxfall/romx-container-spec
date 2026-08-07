@@ -1,0 +1,54 @@
+{
+  "schema_version": "1.0",
+  "label": "Example Game",
+  "sort_label": "Example Game",
+  "original_label": "Example Game",
+  "alternative_labels": {
+    "zh-Hans": "示例游戏",
+    "ja": "サンプルゲーム"
+  },
+  "platform": "gba",
+  "payload_format": "gba",
+  "game_id": "ABCD",
+  "serial": "AGB-ABCD-USA",
+  "version": "Rev 1",
+  "developer": "Example Studio",
+  "publisher": "Example Publisher",
+  "release_date": "2004-10-01",
+  "genre": ["action", "platformer"],
+  "region": ["USA", "EUR"],
+  "languages": ["en", "fr"],
+  "players": {
+    "min": 1,
+    "max": 4
+  },
+  "description": "A complete ROMX metadata example.",
+  "tags": ["verified", "cartridge"],
+  "rom_size": 16777216,
+  "crc32": "1234abcd",
+  "md5": "0123456789abcdef0123456789abcdef",
+  "sha1": "0123456789abcdef0123456789abcdef01234567",
+  "header_title": "EXAMPLE GAME",
+  "header_id": "ABCD",
+  "dump_status": "good",
+  "cover": {
+    "mime_type": "image/png",
+    "width": 600,
+    "height": 850,
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "source": "https://example.invalid/cover/ABCD"
+  },
+  "source": {
+    "name": "Example Database",
+    "id": "gba/ABCD",
+    "url": "https://example.invalid/games/ABCD",
+    "retrieved_at": "2026-08-07T12:00:00Z"
+  },
+  "emulation": {
+    "preferred_core": "mgba",
+    "compatible_cores": ["mgba"],
+    "bios": [],
+    "notes": "Core choice is advisory and must not override user settings."
+  },
+  "x-org.example-rating": 4.5
+}

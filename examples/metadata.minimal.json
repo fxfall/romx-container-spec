@@ -1,0 +1,6 @@
+{
+  "schema_version": "1.0",
+  "label": "Example Game",
+  "platform": "gba",
+  "payload_format": "gba"
+}
