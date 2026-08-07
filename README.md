@@ -33,3 +33,25 @@ python3 tools/romx.py extract game.gbax extracted/
 ```
 
 The script is an implementation guide and validation aid, not a production packer.
+
+## 中文介绍
+
+ROMX 是面向模拟器前端、游戏库和归档工具的开放 ROM 容器规范。
+
+ROMX 文件包含：
+
+- 未修改、可直接加载的标准 ROM；
+- 内嵌的 UTF-8 metadata JSON；
+- 可选的内嵌 PNG 封面；
+- 固定 128 字节 footer，记录偏移、长度和 SHA-256 校验值。
+
+容器扩展名是在原 ROM 扩展名后追加 `x`：`.gba` 变为 `.gbax`，`.nes` 变为 `.nesx`，`.nds` 变为 `.ndsx`。
+
+本仓库定义 ROMX 1.0 Draft 1，包含二进制规范、metadata Schema、平台规则、示例和 Python 参考实现。
+
+中文文档：
+
+- [二进制规范（中文）](docs/ROMX-SPEC_CN.md)
+- [Metadata 参数（中文）](docs/METADATA_CN.md)
+- [平台与 Payload 格式（中文）](docs/PLATFORMS_CN.md)
+- [文件结构（中文）](docs/FILE-STRUCTURE_CN.md)

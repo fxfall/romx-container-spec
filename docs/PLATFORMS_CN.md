@@ -1,0 +1,25 @@
+# 平台与 Payload 格式
+
+`platform` 标识主机平台系列；`payload_format` 标识提取后交给模拟器核心的标准 ROM 格式。两者都不会修改 payload 或 footer。
+
+| 平台 | Payload 格式 | 标准扩展名 | 识别提示 |
+|---|---|---|---|
+| `gb` | `gb` | `.gb` | Nintendo logo 和 Header 标记 |
+| `gbc` | `gbc` | `.gbc` | Nintendo logo 和 CGB flag |
+| `gba` | `gba` | `.gba` | GBA logo 和固定 Header 值 `0x96` |
+| `nes` | `nes` | `.nes` | iNES/NES 2.0 magic `NES 1A` |
+| `nes` | `fds` | `.fds` | 存在时使用 FDS Header `FDS 1A` |
+| `snes` | `sfc` | `.sfc` | LoROM/HiROM/ExHiROM 内部 Header |
+| `snes` | `smc` | `.smc` | 可能包含 512 字节 copier header |
+| `nds` | `nds` | `.nds` | Nintendo DS Header 和 logo |
+| `3ds` | `3ds` | `.3ds` | `0x100` 偏移处的 NCSD 结构 |
+| `3ds` | `cci` | `.cci` | NCSD 容器，与 `.3ds` 同类 |
+| `3ds` | `cia` | `.cia` | CIA section/header 结构 |
+| `genesis` | `md` | `.md` | `0x100` 偏移处通常为 `SEGA` |
+| `genesis` | `gen` | `.gen` | 与 `.md` 同类格式 |
+| `genesis` | `smd` | `.smd` | 交错格式，通常带 copier header |
+| `genesis` | `bin` | `.bin` | 有歧义，必须检查 Header |
+
+这些内容只是识别辅助。读取器不能仅凭有歧义的扩展名判断平台。可信 ROM Header 优先于 metadata 和文件名提示。
+
+ROMX 容器扩展名是在原 ROM 扩展名后追加 `x`：`.gba` 变为 `.gbax`，`.sfc` 变为 `.sfcx`，`.cia` 变为 `.ciax`。
