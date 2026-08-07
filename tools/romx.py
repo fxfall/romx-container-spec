@@ -51,10 +51,19 @@ def crc32(data: bytes) -> str:
     return f"{zlib.crc32(data) & 0xffffffff:08x}"
 
 
+def normalize_crc32(value: str) -> str:
+    """Validate and canonicalize an explicit database CRC32 key."""
+    if len(value) != 8 or any(character not in "0123456789abcdefABCDEF" for character in value):
+        raise RomxError("CRC32 override must be exactly 8 hexadecimal characters")
+    return value.lower()
+
+
 def classify_gb_payload(rom: bytes, payload_format: str | None) -> str:
     """Apply the Game Boy CGB flag policy from the ROMX platform rules."""
     if len(rom) <= 0x143:
-        raise RomxError("GB ROM is too small to contain CGB flag")
+        if payload_format in {"gb", "gbc"}:
+            return payload_format
+        raise RomxError("GB ROM is too small to classify without payload_format gb or gbc")
     flag = rom[0x143]
     if flag == 0xC0:
         return "gbc"
@@ -90,7 +99,7 @@ def _validate_metadata(value: Any) -> dict[str, Any]:
     return value
 
 
-def _json_bytes(metadata_path: Path) -> bytes:
+def _json_bytes(metadata_path: Path, rom_bytes: bytes, crc32_override: str | None = None) -> bytes:
     raw = metadata_path.read_bytes()
     if raw.startswith(b"\xef\xbb\xbf"):
         raise RomxError("metadata must not contain a UTF-8 BOM")
@@ -99,15 +108,22 @@ def _json_bytes(metadata_path: Path) -> bytes:
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise RomxError(f"invalid metadata JSON: {exc}") from exc
     _validate_metadata(value)
+    value["crc32"] = normalize_crc32(crc32_override) if crc32_override is not None else crc32(rom_bytes)
     # Compact, deterministic UTF-8 JSON. No filesystem path is embedded.
     return json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 
-def pack(rom_path: Path, metadata_path: Path, output_path: Path, cover_path: Path | None = None) -> None:
+def pack(
+    rom_path: Path,
+    metadata_path: Path,
+    output_path: Path,
+    cover_path: Path | None = None,
+    crc32_override: str | None = None,
+) -> None:
     rom = rom_path.read_bytes()
     if not rom:
         raise RomxError("ROM payload must not be empty")
-    metadata = _json_bytes(metadata_path)
+    metadata = _json_bytes(metadata_path, rom, crc32_override)
     cover = b""
     if cover_path is not None:
         cover = cover_path.read_bytes()
@@ -256,6 +272,7 @@ def import_lpl(
     force_cover_dir: Path | None = None,
     cover_set: str = "Named_Snaps",
     skip_missing: bool = False,
+    crc32_override: str | None = None,
 ) -> int:
     """Import one LPL into sequential ROMX files.
 
@@ -288,7 +305,6 @@ def import_lpl(
             payload_format = classify_gb_payload(rom_bytes, payload_format)
         label = item.get("label") or rom_path.stem
         metadata: dict[str, Any] = {"schema_version": "1.0", "label": str(label), "platform": _platform_for(payload_format, playlist_name), "payload_format": payload_format}
-        metadata["crc32"] = crc32(rom_bytes)
         cover_path: Path | None = None
         if force_cover_dir:
             cover_path = _find_import_file(force_cover_dir / f"{rom_path.stem}.png", (force_cover_dir / f"{label}.png",))
@@ -305,7 +321,7 @@ def import_lpl(
         metadata_file.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         output_path = output_dir / f"{index:06d}.{payload_format}x"
         try:
-            pack(rom_path, metadata_file, output_path, cover_path)
+            pack(rom_path, metadata_file, output_path, cover_path, crc32_override)
         finally:
             metadata_file.unlink(missing_ok=True)
         imported += 1
@@ -346,6 +362,7 @@ def export_lpl(
     items: list[dict[str, str]] = []
     for index, romx_path in enumerate(files, 1):
         data, info = _read_footer(romx_path)
+        rom = data[info["rom_offset"]:info["rom_offset"] + info["rom_size"]]
         metadata: dict[str, Any] = {}
         if info["metadata_size"]:
             start = info["metadata_offset"]
@@ -361,7 +378,15 @@ def export_lpl(
             (actual_cover_dir / f"{_safe_filename(label)}.png").write_bytes(cover)
         prefix = lpl_rom_prefix or f"/roms/{playlist}"
         lpl_item_path = str(Path(prefix) / filename).replace("\\", "/")
-        items.append({"path": lpl_item_path, "label": label, "core_path": "DETECT", "core_name": "DETECT", "crc32": f"{crc32(rom)}|crc", "db_name": ""})
+        lookup_crc = metadata.get("crc32")
+        if not isinstance(lookup_crc, str):
+            lookup_crc = crc32(rom)
+        else:
+            try:
+                lookup_crc = normalize_crc32(lookup_crc)
+            except RomxError:
+                lookup_crc = crc32(rom)
+        items.append({"path": lpl_item_path, "label": label, "core_path": "DETECT", "core_name": "DETECT", "crc32": f"{lookup_crc}|crc", "db_name": ""})
     actual_lpl.parent.mkdir(parents=True, exist_ok=True)
     actual_lpl.write_text(json.dumps({"version": "1.5", "default_core_path": "DETECT", "default_core_name": "DETECT", "label_display_mode": 0, "right_thumbnail_mode": 0, "left_thumbnail_mode": 0, "thumbnail_match_mode": 0, "sort_mode": 0, "items": items}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return len(items)
@@ -375,6 +400,7 @@ def main() -> int:
     pack_parser.add_argument("metadata", type=Path)
     pack_parser.add_argument("-o", "--output", required=True, type=Path)
     pack_parser.add_argument("--cover", type=Path)
+    pack_parser.add_argument("--crc32", help="override metadata CRC32 lookup key (8 hexadecimal characters)")
     for name in ("inspect", "verify"):
         command = sub.add_parser(name, help=f"{name} a ROMX file")
         command.add_argument("romx", type=Path)
@@ -390,6 +416,7 @@ def main() -> int:
     import_parser.add_argument("--cover-dir", dest="force_cover_dir", type=Path, help="force PNG cover lookup in this flat directory")
     import_parser.add_argument("--cover-set", default="Named_Snaps", help="thumbnail set directory (default: Named_Snaps)")
     import_parser.add_argument("--skip-missing", action="store_true", help="skip LPL items whose ROM is missing")
+    import_parser.add_argument("--crc32", help="override metadata CRC32 lookup key for every imported ROM")
     export_parser = sub.add_parser("export-lpl", help="extract a ROMX folder to ROMs, thumbnails, and an LPL")
     export_parser.add_argument("romx_dir", type=Path)
     export_parser.add_argument("-o", "--output-root", type=Path, default=Path("."), help="RetroArch-style output root")
@@ -402,7 +429,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.command == "pack":
-            pack(args.rom, args.metadata, args.output, args.cover)
+            pack(args.rom, args.metadata, args.output, args.cover, args.crc32)
         elif args.command == "inspect":
             print(json.dumps(inspect(args.romx), ensure_ascii=False, indent=2))
         elif args.command == "verify":
@@ -411,7 +438,7 @@ def main() -> int:
         elif args.command == "extract":
             extract(args.romx, args.output)
         elif args.command == "import-lpl":
-            count = import_lpl(args.lpl, args.output, args.rom_root, args.cover_root, args.force_rom_dir, args.force_cover_dir, args.cover_set, args.skip_missing)
+            count = import_lpl(args.lpl, args.output, args.rom_root, args.cover_root, args.force_rom_dir, args.force_cover_dir, args.cover_set, args.skip_missing, args.crc32)
             print(f"imported {count} ROMX files into {args.output}")
         else:
             count = export_lpl(args.romx_dir, args.output_root, args.playlist_name, args.lpl_path, args.rom_dir, args.cover_dir, args.lpl_rom_prefix, args.cover_set)

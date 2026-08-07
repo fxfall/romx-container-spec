@@ -46,7 +46,7 @@ Metadata 是内嵌在 ROMX 容器中的可选 UTF-8 JSON object。它由 footer 
 | `cover.width` / `height` | integer | 像素尺寸 |
 | `cover.sha256` | string | 内嵌 cover 字节的 SHA-256 |
 
-`crc32` 用于 RetroArch 和 ROM 数据库匹配，通常与 ROM size 一起使用。权威的 ROM SHA-256 保存在 footer 中，只负责完整性校验，不作为数据库匹配键。MD5 和 SHA-1 不再存储；如果某个 provider 要求其他 hash，可以按需计算。Cover object 不包含文件系统路径、待访问 URL、命令、凭据或脚本。
+写入器默认必须根据原始 ROM 字节重新生成 `crc32`，覆盖输入 metadata 中可能过期的值。需要匹配某个数据库已发布的身份时，可以显式提供 8 位十六进制自定义值；这个值只是查找提示，不代表完整性校验。CRC32 在卡带 ROM 数据库中很常见：RetroArch 将 CRC 或光盘序列号作为主要内容键，No-Intro DAT 通常同时发布 size、CRC32 和 SHA-1。ROMX 查找时使用 CRC32 加 ROM size。权威的 ROM SHA-256 保存在 footer 中，并且始终描述实际载荷，只负责完整性校验。MD5 和 SHA-1 不再存储；如果某个 provider 要求其他 hash，可以按需计算。Cover object 不包含文件系统路径、待访问 URL、命令、凭据或脚本。
 
 ## 扩展字段
 

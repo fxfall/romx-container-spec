@@ -27,6 +27,8 @@ The [Python reference implementation](tools/romx.py) demonstrates how to create,
 
 ```bash
 python3 tools/romx.py pack game.gba metadata.json -o game.gbax --cover cover.png
+# Optional database identity override; without it CRC32 is regenerated from game.gba.
+python3 tools/romx.py pack game.gba metadata.json -o game.gbax --crc32 0123abcd
 python3 tools/romx.py inspect game.gbax
 python3 tools/romx.py verify game.gbax
 python3 tools/romx.py extract game.gbax extracted/
@@ -36,7 +38,7 @@ python3 tools/romx.py export-lpl romx-out -o retroarch-out
 
 The script is an implementation guide and validation aid, not a production packer.
 
-`import-lpl` creates sequential names such as `000001.gbcx`, matching each LPL item to a ROM and (when available) `Named_Snaps/<rom-stem>.png`. Use `--rom-dir` and `--cover-dir` to force flat lookup directories. `export-lpl` writes the default RetroArch layout: `playlists/`, `roms/<playlist>/`, and `thumbnails/<playlist>/Named_Snaps/`; use `--lpl-path`, `--rom-dir`, and `--cover-dir` to override those destinations.
+`import-lpl` creates sequential names such as `000001.gbcx`, matching each LPL item to a ROM and (when available) `Named_Snaps/<rom-stem>.png`. It regenerates each metadata CRC32 from the original ROM by default; use `--crc32 0123abcd` to apply an explicit lookup override. Use `--rom-dir` and `--cover-dir` to force flat lookup directories. `export-lpl` writes the default RetroArch layout: `playlists/`, `roms/<playlist>/`, and `thumbnails/<playlist>/Named_Snaps/`; use `--lpl-path`, `--rom-dir`, and `--cover-dir` to override those destinations.
 
 ## 中文介绍
 

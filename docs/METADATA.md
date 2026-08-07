@@ -46,7 +46,7 @@ Metadata is an optional UTF-8 JSON object embedded in the ROMX container. It is 
 | `cover.width` / `height` | integer | Pixel dimensions |
 | `cover.sha256` | string | SHA-256 of embedded cover bytes |
 
-`crc32` is used for RetroArch and ROM database lookup, normally together with ROM size. The authoritative ROM SHA-256 is in the footer for integrity and is not a database lookup key. MD5 and SHA-1 are intentionally not stored; providers that require another hash may calculate it on demand. The cover object does not contain a filesystem path, URL to fetch, command, credential, or script.
+Writers MUST regenerate `crc32` from the original ROM bytes by default, replacing any stale value supplied in an input metadata file. A caller may explicitly provide an eight-digit hexadecimal override when matching a database's published identity; the override is a lookup hint, not an integrity claim. CRC32 is common for cartridge-ROM databases: RetroArch uses CRC or a disc serial as its primary content key, and No-Intro DATs publish size, CRC32, and SHA-1 together. For ROMX, use CRC32 with ROM size for lookup. The authoritative ROM SHA-256 is in the footer for integrity and always describes the actual payload. MD5 and SHA-1 are intentionally not stored; providers that require another hash may calculate them on demand. The cover object does not contain a filesystem path, URL to fetch, command, credential, or script.
 
 ## Extensions
 
