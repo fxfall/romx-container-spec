@@ -43,10 +43,10 @@ Game Name.ciax
 
 ### 文档
 
-- [ROMX 二进制规范](docs/ROMX-SPEC.md)
-- [Metadata 参数](docs/METADATA.md)
-- [平台与 ROM 格式](docs/PLATFORMS.md)
-- [项目与容器文件结构](docs/FILE-STRUCTURE.md)
+- [ROMX 二进制规范（中文）](docs/ROMX-SPEC_CN.md)
+- [Metadata 参数（中文）](docs/METADATA_CN.md)
+- [平台与 ROM 格式（中文）](docs/PLATFORMS_CN.md)
+- [项目与容器文件结构（中文）](docs/FILE-STRUCTURE_CN.md)
 - [JSON Schema](schema/romx-metadata.schema.json)
 
 ### 最小 metadata
