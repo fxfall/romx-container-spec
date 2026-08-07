@@ -47,6 +47,7 @@ v1 不支持 ROM 压缩和加密。未来若增加，必须提升主版本或使
 
 - 编码必须为 UTF-8，不允许 BOM。
 - 顶层必须为 JSON object。
+- metadata 已嵌入容器本体，由 footer 的 `metadata_offset` 和 `metadata_size` 定位；不定义外部路径。
 - 标准字段见 `METADATA.md` 和 JSON Schema。
 - 读取器应兼容未知字段。
 - 严格写入器不得生成尾逗号；兼容读取器可以选择容忍尾逗号。
@@ -61,7 +62,6 @@ v1 允许嵌入一个 cover，格式为 PNG、JPEG 或 WebP。格式必须通过
 - 最大 32 MiB；
 - 最大边长 8192 px；
 - 解码前检查图片尺寸，防止解压炸弹；
-- 提取文件名由读取器生成，不使用 metadata 提供的路径。
 
 ## 6. 校验顺序
 
@@ -98,4 +98,4 @@ v1 允许嵌入一个 cover，格式为 PNG、JPEG 或 WebP。格式必须通过
 <rom_sha256>.<payload_format>
 ```
 
-数据库应保存原始容器路径（例如 `.gbax`）；模拟核心只接收提取后的标准 ROM 路径。
+metadata 和 cover 均属于 ROMX 本体；模拟核心只接收提取后的标准 ROM。

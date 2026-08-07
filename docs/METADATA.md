@@ -40,7 +40,6 @@ ROMX metadata 使用 UTF-8 JSON object。标准标题字段为 `label`。
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `rom_size` | integer | 可选冗余信息；必须与 footer 一致 |
 | `crc32` | string | 8 位小写十六进制 |
 | `md5` | string | 32 位小写十六进制 |
 | `sha1` | string | 40 位小写十六进制 |
@@ -61,28 +60,6 @@ SHA-256 的权威值存放在 footer，不需要在 metadata 重复保存。
 | `cover.sha256` | string | cover 数据 SHA-256 |
 | `cover.source` | string | 来源名称或 URL；不得作为自动访问指令 |
 
-## 数据来源
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `source` | object | metadata 来源信息 |
-| `source.name` | string | 数据库或工具名称 |
-| `source.id` | string | 来源记录 ID |
-| `source.url` | string | 参考 URL |
-| `source.retrieved_at` | string | ISO 8601 时间 |
-
-## 核心建议
-
-| 字段 | 类型 | 说明 |
-|---|---|---|
-| `emulation` | object | 可选运行建议 |
-| `emulation.preferred_core` | string | 建议核心 ID |
-| `emulation.compatible_cores` | string[] | 已知兼容核心 |
-| `emulation.bios` | string[] | 所需 BIOS 标识，不含本地路径 |
-| `emulation.notes` | string | 兼容性说明 |
-
-这些字段不能强制覆盖用户选择，也不得携带可执行命令、核心下载地址或本地绝对路径。
-
 ## 扩展字段
 
 非标准字段必须以 `x-` 开头，建议使用组织命名空间：
@@ -95,10 +72,4 @@ SHA-256 的权威值存放在 footer，不需要在 metadata 重复保存。
 
 读取器应保留但可以忽略未知扩展字段。
 
-## 明确禁止的字段内容
-
-- 本地绝对路径；
-- 自动执行命令；
-- 密钥、口令或解密材料；
-- 要求读取器静默访问的网络地址；
-- 内嵌脚本。
+metadata 和 cover 都已嵌入 ROMX，不使用外部路径引用。
