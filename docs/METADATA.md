@@ -52,6 +52,8 @@ When importing or exporting a RetroArch LPL, a writer may preserve frontend-only
 
 The ROMX wire format stores covers as PNG. Implementations may accept JPG, JPEG, WebP, GIF, and BMP inputs and convert them to PNG before packing. With no requested output size, PNG input should be preserved byte-for-byte and other formats should retain their decoded dimensions; an explicit resolution may normalize any supported format.
 
+When a cover is packed, writers should derive `cover.mime_type`, `cover.width`, `cover.height`, and `cover.sha256` from the normalized PNG bytes that are actually embedded, rather than from the source image file.
+
 ## Extensions
 
 Non-standard fields must begin with `x-` and match the schema pattern. Readers may ignore unknown extensions but should preserve them when rewriting metadata.

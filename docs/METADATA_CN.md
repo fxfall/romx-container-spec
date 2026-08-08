@@ -52,6 +52,8 @@ Metadata 是内嵌在 ROMX 容器中的可选 UTF-8 JSON object。它由 footer 
 
 ROMX 线格式中的 cover 固定保存为 PNG。实现可以接受 JPG、JPEG、WebP、GIF 和 BMP，并在打包前转换为 PNG。未指定输出分辨率时，PNG 输入应逐字节保留，其他格式保留解码后的原始尺寸；指定分辨率后，所有支持的格式都可以统一转换并调整为该尺寸。
 
+写入 cover 时，应根据实际内嵌的标准化 PNG 字节生成 `cover.mime_type`、`cover.width`、`cover.height` 和 `cover.sha256`，而不是根据源图片文件填写。
+
 ## 扩展字段
 
 非标准字段必须以 `x-` 开头并符合 Schema 的模式。读取器可以忽略未知扩展，但重写 metadata 时应尽量保留。
