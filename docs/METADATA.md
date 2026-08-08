@@ -50,6 +50,8 @@ Writers MUST regenerate `crc32` from the original ROM bytes by default, replacin
 
 When importing or exporting a RetroArch LPL, a writer may preserve frontend-only fields under the `x-retroarch` extension, such as `db_name`, `core_name`, and the original LPL identity string. ROM paths and core paths are not copied because the ROM and cover are already embedded or addressed by the output workflow.
 
+The ROMX wire format stores covers as PNG. Implementations may accept JPG, JPEG, WebP, GIF, and BMP inputs and convert them to PNG before packing. With no requested output size, PNG input should be preserved byte-for-byte and other formats should retain their decoded dimensions; an explicit resolution may normalize any supported format.
+
 ## Extensions
 
 Non-standard fields must begin with `x-` and match the schema pattern. Readers may ignore unknown extensions but should preserve them when rewriting metadata.

@@ -9,13 +9,16 @@ The implementation mirrors the specification:
 4. On read, parse the footer from EOF, validate bounds and hashes, then expose
    the embedded regions.
 
-This file intentionally uses only the Python standard library. It is an
-implementation guide and validation aid, not a production packer.
+This file uses the Python standard library plus Pillow for optional cover
+conversion. PNG covers are byte-preserved by default; Pillow is only needed
+for non-PNG covers or an explicit cover resolution. It is an implementation
+guide and validation aid, not a production packer.
 """
 
 from __future__ import annotations
 
 import argparse
+from io import BytesIO
 import hashlib
 import json
 import struct
@@ -56,6 +59,56 @@ def normalize_crc32(value: str) -> str:
     if len(value) != 8 or any(character not in "0123456789abcdefABCDEF" for character in value):
         raise RomxError("CRC32 override must be exactly 8 hexadecimal characters")
     return value.lower()
+
+
+def normalize_cover_bytes(data: bytes, target: tuple[int, int] | None = None) -> bytes:
+    """Convert supported cover formats to PNG, optionally at exact size.
+
+    PNG bytes are returned unchanged when no target size is requested. Other
+    formats require Pillow and use the first frame for animated GIFs.
+    """
+    if not data:
+        raise RomxError("cover image must not be empty")
+    if target is not None:
+        width, height = target
+        if width <= 0 or height <= 0 or width > 8192 or height > 8192:
+            raise RomxError("cover resolution must be between 1 and 8192 pixels")
+    elif data.startswith(PNG_SIGNATURE):
+        return data
+    try:
+        from PIL import Image
+    except ImportError as exc:
+        raise RomxError("image conversion requires Pillow; install requirements.txt") from exc
+    try:
+        with Image.open(BytesIO(data)) as image:
+            image.seek(0)
+            if target is not None:
+                image = image.resize(target, Image.Resampling.LANCZOS)
+            image = image.convert("RGBA")
+            output = BytesIO()
+            image.save(output, format="PNG", optimize=True)
+            return output.getvalue()
+    except Exception as exc:
+        raise RomxError(f"unsupported or invalid cover image: {exc}") from exc
+
+
+def normalize_cover_path(path: Path, target: tuple[int, int] | None = None) -> bytes:
+    return normalize_cover_bytes(path.read_bytes(), target)
+
+
+def parse_cover_size(value: str | None) -> tuple[int, int] | None:
+    if value is None:
+        return None
+    separator = "x" if "x" in value else "X" if "X" in value else None
+    if separator is None:
+        raise RomxError("cover size must use WIDTHxHEIGHT")
+    try:
+        width, height = (int(part.strip()) for part in value.split(separator, 1))
+    except ValueError as exc:
+        raise RomxError("cover size must use WIDTHxHEIGHT") from exc
+    if width <= 0 or height <= 0 or width > 8192 or height > 8192:
+        raise RomxError("cover size must be between 1x1 and 8192x8192")
+    return width, height
 
 
 def classify_gb_payload(rom: bytes, payload_format: str | None) -> str:
@@ -119,6 +172,7 @@ def pack(
     output_path: Path,
     cover_path: Path | None = None,
     crc32_override: str | None = None,
+    cover_size: tuple[int, int] | None = None,
 ) -> None:
     rom = rom_path.read_bytes()
     if not rom:
@@ -126,7 +180,7 @@ def pack(
     metadata = _json_bytes(metadata_path, rom, crc32_override)
     cover = b""
     if cover_path is not None:
-        cover = cover_path.read_bytes()
+        cover = normalize_cover_path(cover_path, cover_size)
         if not cover.startswith(PNG_SIGNATURE):
             raise RomxError("cover is not a PNG file")
 
@@ -360,6 +414,7 @@ def import_lpl(
     cover_set: str = "Named_Snaps",
     skip_missing: bool = False,
     crc32_override: str | None = None,
+    cover_size: tuple[int, int] | None = None,
 ) -> int:
     """Import one LPL into sequential ROMX files.
 
@@ -427,7 +482,7 @@ def import_lpl(
         metadata_file.write_text(json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         output_path = output_dir / f"{index:06d}.{payload_format}x"
         try:
-            pack(rom_path, metadata_file, output_path, cover_path, crc32_override)
+            pack(rom_path, metadata_file, output_path, cover_path, crc32_override, cover_size)
         finally:
             metadata_file.unlink(missing_ok=True)
         imported += 1
@@ -512,8 +567,9 @@ def main() -> int:
     pack_parser.add_argument("rom", type=Path)
     pack_parser.add_argument("metadata", type=Path)
     pack_parser.add_argument("-o", "--output", required=True, type=Path)
-    pack_parser.add_argument("--cover", type=Path)
+    pack_parser.add_argument("--cover", type=Path, help="PNG/JPEG/WebP/GIF/BMP cover")
     pack_parser.add_argument("--crc32", help="override metadata CRC32 lookup key (8 hexadecimal characters)")
+    pack_parser.add_argument("--cover-size", help="normalize cover to WIDTHxHEIGHT PNG")
     for name in ("inspect", "verify"):
         command = sub.add_parser(name, help=f"{name} a ROMX file")
         command.add_argument("romx", type=Path)
@@ -530,6 +586,7 @@ def main() -> int:
     import_parser.add_argument("--cover-set", default="Named_Snaps", help="thumbnail set directory (default: Named_Snaps)")
     import_parser.add_argument("--skip-missing", action="store_true", help="skip LPL items whose ROM is missing")
     import_parser.add_argument("--crc32", help="override metadata CRC32 lookup key for every imported ROM")
+    import_parser.add_argument("--cover-size", help="normalize imported covers to WIDTHxHEIGHT PNG")
     export_parser = sub.add_parser("export-lpl", help="extract a ROMX folder to ROMs, thumbnails, and an LPL")
     export_parser.add_argument("romx_dir", type=Path)
     export_parser.add_argument("-o", "--output-root", type=Path, default=Path("."), help="RetroArch-style output root")
@@ -542,7 +599,7 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.command == "pack":
-            pack(args.rom, args.metadata, args.output, args.cover, args.crc32)
+            pack(args.rom, args.metadata, args.output, args.cover, args.crc32, parse_cover_size(args.cover_size))
         elif args.command == "inspect":
             print(json.dumps(inspect(args.romx), ensure_ascii=False, indent=2))
         elif args.command == "verify":
@@ -551,7 +608,7 @@ def main() -> int:
         elif args.command == "extract":
             extract(args.romx, args.output)
         elif args.command == "import-lpl":
-            count = import_lpl(args.lpl, args.output, args.rom_root, args.cover_root, args.force_rom_dir, args.force_cover_dir, args.cover_set, args.skip_missing, args.crc32)
+            count = import_lpl(args.lpl, args.output, args.rom_root, args.cover_root, args.force_rom_dir, args.force_cover_dir, args.cover_set, args.skip_missing, args.crc32, parse_cover_size(args.cover_size))
             print(f"imported {count} ROMX files into {args.output}")
         else:
             count = export_lpl(args.romx_dir, args.output_root, args.playlist_name, args.lpl_path, args.rom_dir, args.cover_dir, args.lpl_rom_prefix, args.cover_set)
