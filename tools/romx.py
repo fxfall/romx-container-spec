@@ -263,6 +263,82 @@ def _find_import_file(primary: Path, fallback: Iterable[Path]) -> Path | None:
     return None
 
 
+def _resolve_lpl_path(lpl_path: Path, value: str) -> Path:
+    """Resolve an LPL path without turning it into metadata."""
+    candidate = Path(value)
+    if candidate.is_absolute():
+        return candidate
+    relative_to_lpl = lpl_path.parent / candidate
+    return relative_to_lpl if relative_to_lpl.is_file() else candidate
+
+
+def _lpl_item_identity(value: Any) -> tuple[str, str] | None:
+    """Parse RetroArch's ``CRC|crc`` or ``SERIAL|serial`` identity form."""
+    if not isinstance(value, str) or not value or value.upper() == "DETECT":
+        return None
+    token, separator, kind = value.partition("|")
+    if not token or not separator:
+        return None
+    kind = kind.lower()
+    if kind == "crc":
+        try:
+            return "crc32", normalize_crc32(token)
+        except RomxError:
+            return None
+    if kind == "serial":
+        return "serial", token
+    return None
+
+
+def _retroarch_item_metadata(item: dict[str, Any]) -> dict[str, Any]:
+    """Preserve non-path LPL compatibility fields under the x namespace."""
+    extension: dict[str, Any] = {}
+    for key in ("db_name", "core_name"):
+        value = item.get(key)
+        if isinstance(value, str) and value and value != "DETECT":
+            extension[key] = value
+    source_crc = item.get("crc32")
+    if isinstance(source_crc, str) and source_crc:
+        extension["source_crc32"] = source_crc
+    known = {"path", "label", "core_path", "core_name", "crc32", "db_name"}
+    extra = {key: value for key, value in item.items() if key not in known and not key.endswith("_path")}
+    if extra:
+        extension["extra"] = extra
+    return extension
+
+
+def _cover_from_lpl(
+    lpl_path: Path,
+    playlist_name: str,
+    item: dict[str, Any],
+    rom_path: Path,
+    label: str,
+    cover_root: Path | None,
+    force_cover_dir: Path | None,
+    cover_set: str,
+) -> Path | None:
+    """Resolve a cover from explicit LPL data or the RetroArch tree."""
+    if force_cover_dir:
+        return _find_import_file(force_cover_dir / f"{rom_path.stem}.png", (force_cover_dir / f"{label}.png",))
+
+    for key in ("cover_path", "thumbnail_path", "cover", "thumbnail"):
+        value = item.get(key)
+        if isinstance(value, str) and value:
+            candidate = _resolve_lpl_path(lpl_path, value)
+            if candidate.is_file():
+                return candidate
+
+    if cover_root:
+        cover_dir = cover_root / playlist_name / cover_set
+    else:
+        # A standalone absolute LPL commonly lives in <root>/playlists; infer
+        # the sibling RetroArch thumbnails tree without requiring another CLI
+        # path argument.
+        retroarch_root = lpl_path.parent.parent
+        cover_dir = retroarch_root / "thumbnails" / playlist_name / cover_set
+    return _find_import_file(cover_dir / f"{rom_path.stem}.png", (cover_dir / f"{label}.png",))
+
+
 def import_lpl(
     lpl_path: Path,
     output_dir: Path,
@@ -279,7 +355,11 @@ def import_lpl(
     `rom_root` maps RetroArch virtual paths such as `/roms/02-GBA/1.gba` to
     a local tree. `force_rom_dir` and `force_cover_dir` ignore the directory
     part from the LPL and look up each item by basename, which is useful when
-    ROMs or thumbnails have been moved to a flat directory.
+    ROMs or thumbnails have been moved to a flat directory. When no roots are
+    supplied, absolute ROM paths in the LPL are used directly and a standard
+    `playlists/../thumbnails/<playlist>/<cover_set>` tree is inferred. Useful
+    LPL fields are written to metadata; RetroArch-only fields are preserved in
+    `x-retroarch`, while paths remain outside metadata.
     """
     document, items = _playlist_items(lpl_path)
     playlist_name = lpl_path.stem
@@ -292,7 +372,12 @@ def import_lpl(
                 continue
             raise RomxError(f"LPL item {index} has no path")
         virtual = _virtual_path(item_path)
-        rom_path = (force_rom_dir / virtual.name) if force_rom_dir else ((rom_root / virtual) if rom_root else Path(item_path))
+        if force_rom_dir:
+            rom_path = force_rom_dir / virtual.name
+        elif rom_root:
+            rom_path = rom_root / virtual
+        else:
+            rom_path = _resolve_lpl_path(lpl_path, item_path)
         if not rom_path.is_file():
             if skip_missing:
                 continue
@@ -305,12 +390,22 @@ def import_lpl(
             payload_format = classify_gb_payload(rom_bytes, payload_format)
         label = item.get("label") or rom_path.stem
         metadata: dict[str, Any] = {"schema_version": "1.0", "label": str(label), "platform": _platform_for(payload_format, playlist_name), "payload_format": payload_format}
-        cover_path: Path | None = None
-        if force_cover_dir:
-            cover_path = _find_import_file(force_cover_dir / f"{rom_path.stem}.png", (force_cover_dir / f"{label}.png",))
-        elif cover_root:
-            cover_dir = cover_root / playlist_name / cover_set
-            cover_path = _find_import_file(cover_dir / f"{rom_path.stem}.png", (cover_dir / f"{label}.png",))
+        identity = _lpl_item_identity(item.get("crc32"))
+        if identity and identity[0] == "serial":
+            metadata["serial"] = identity[1]
+        retroarch = _retroarch_item_metadata(item)
+        if retroarch:
+            metadata["x-retroarch"] = retroarch
+        cover_path = _cover_from_lpl(
+            lpl_path,
+            playlist_name,
+            item,
+            rom_path,
+            str(label),
+            cover_root,
+            force_cover_dir,
+            cover_set,
+        )
         if cover_path:
             cover_bytes = cover_path.read_bytes()
             dimensions = _png_dimensions(cover_bytes)
@@ -325,7 +420,12 @@ def import_lpl(
         finally:
             metadata_file.unlink(missing_ok=True)
         imported += 1
-    (output_dir / "manifest.json").write_text(json.dumps({"source_lpl": str(lpl_path), "playlist": playlist_name, "items": len(items), "imported": imported}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    settings = {
+        key: document[key]
+        for key in ("version", "default_core_path", "default_core_name", "label_display_mode", "right_thumbnail_mode", "left_thumbnail_mode", "thumbnail_match_mode", "sort_mode")
+        if key in document
+    }
+    (output_dir / "manifest.json").write_text(json.dumps({"source_lpl": str(lpl_path), "playlist": playlist_name, "items": len(items), "imported": imported, "lpl_settings": settings}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return imported
 
 
@@ -386,7 +486,9 @@ def export_lpl(
                 lookup_crc = normalize_crc32(lookup_crc)
             except RomxError:
                 lookup_crc = crc32(rom)
-        items.append({"path": lpl_item_path, "label": label, "core_path": "DETECT", "core_name": "DETECT", "crc32": f"{lookup_crc}|crc", "db_name": ""})
+        retroarch = metadata.get("x-retroarch")
+        retroarch = retroarch if isinstance(retroarch, dict) else {}
+        items.append({"path": lpl_item_path, "label": label, "core_path": "DETECT", "core_name": retroarch.get("core_name", "DETECT"), "crc32": f"{lookup_crc}|crc", "db_name": retroarch.get("db_name", "")})
     actual_lpl.parent.mkdir(parents=True, exist_ok=True)
     actual_lpl.write_text(json.dumps({"version": "1.5", "default_core_path": "DETECT", "default_core_name": "DETECT", "label_display_mode": 0, "right_thumbnail_mode": 0, "left_thumbnail_mode": 0, "thumbnail_match_mode": 0, "sort_mode": 0, "items": items}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return len(items)

@@ -48,6 +48,8 @@ Metadata is an optional UTF-8 JSON object embedded in the ROMX container. It is 
 
 Writers MUST regenerate `crc32` from the original ROM bytes by default, replacing any stale value supplied in an input metadata file. A caller may explicitly provide an eight-digit hexadecimal override when matching a database's published identity; the override is a lookup hint, not an integrity claim. CRC32 is common for cartridge-ROM databases: RetroArch uses CRC or a disc serial as its primary content key, and No-Intro DATs publish size, CRC32, and SHA-1 together. For ROMX, use CRC32 with ROM size for lookup. The authoritative ROM SHA-256 is in the footer for integrity and always describes the actual payload. MD5 and SHA-1 are intentionally not stored; providers that require another hash may calculate them on demand. The cover object does not contain a filesystem path, URL to fetch, command, credential, or script.
 
+When importing or exporting a RetroArch LPL, a writer may preserve frontend-only fields under the `x-retroarch` extension, such as `db_name`, `core_name`, and the original LPL identity string. ROM paths and core paths are not copied because the ROM and cover are already embedded or addressed by the output workflow.
+
 ## Extensions
 
 Non-standard fields must begin with `x-` and match the schema pattern. Readers may ignore unknown extensions but should preserve them when rewriting metadata.
