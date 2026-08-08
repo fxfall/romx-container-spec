@@ -272,6 +272,17 @@ def _resolve_lpl_path(lpl_path: Path, value: str) -> Path:
     return relative_to_lpl if relative_to_lpl.is_file() else candidate
 
 
+def _resolve_lpl_rom_path(lpl_path: Path, value: str) -> Path:
+    """Resolve real and RetroArch virtual absolute ROM paths."""
+    if value.startswith("/roms/"):
+        # <content-root>/retroarch/playlists/<name>.lpl -> <content-root>/roms/...
+        content_root = lpl_path.parent.parent.parent
+        candidate = content_root / _virtual_path(value)
+        if candidate.is_file():
+            return candidate
+    return _resolve_lpl_path(lpl_path, value)
+
+
 def _lpl_item_identity(value: Any) -> tuple[str, str] | None:
     """Parse RetroArch's ``CRC|crc`` or ``SERIAL|serial`` identity form."""
     if not isinstance(value, str) or not value or value.upper() == "DETECT":
@@ -377,7 +388,7 @@ def import_lpl(
         elif rom_root:
             rom_path = rom_root / virtual
         else:
-            rom_path = _resolve_lpl_path(lpl_path, item_path)
+            rom_path = _resolve_lpl_rom_path(lpl_path, item_path)
         if not rom_path.is_file():
             if skip_missing:
                 continue
