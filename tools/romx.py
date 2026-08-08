@@ -25,7 +25,6 @@ import struct
 import sys
 import zlib
 from pathlib import Path
-from typing import Iterable
 from typing import Any
 
 
@@ -36,6 +35,7 @@ FLAG_METADATA = 1 << 0
 FLAG_COVER = 1 << 1
 FLAG_BODY_SHA256 = 1 << 2
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+COVER_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
 
 # magic, version, six uint64 values, rom hash, flags, footer size, body hash
 FOOTER = struct.Struct("<4sI6Q32sII32s")
@@ -319,12 +319,12 @@ def _safe_filename(label: str) -> str:
     return label.replace("/", "_").replace("\\", "_").replace("\x00", "_").strip() or "untitled"
 
 
-def _find_import_file(primary: Path, fallback: Iterable[Path]) -> Path | None:
-    if primary.is_file():
-        return primary
-    for candidate in fallback:
-        if candidate.is_file():
-            return candidate
+def _find_cover_file(directory: Path, stems: tuple[str, ...]) -> Path | None:
+    for stem in stems:
+        for extension in COVER_EXTENSIONS:
+            candidate = directory / f"{stem}{extension}"
+            if candidate.is_file():
+                return candidate
     return None
 
 
@@ -395,7 +395,7 @@ def _cover_from_lpl(
 ) -> Path | None:
     """Resolve a cover from explicit LPL data or the RetroArch tree."""
     if force_cover_dir:
-        return _find_import_file(force_cover_dir / f"{rom_path.stem}.png", (force_cover_dir / f"{label}.png",))
+        return _find_cover_file(force_cover_dir, (rom_path.stem, label))
 
     for key in ("cover_path", "thumbnail_path", "cover", "thumbnail"):
         value = item.get(key)
@@ -412,7 +412,7 @@ def _cover_from_lpl(
         # path argument.
         retroarch_root = lpl_path.parent.parent
         cover_dir = retroarch_root / "thumbnails" / playlist_name / cover_set
-    return _find_import_file(cover_dir / f"{rom_path.stem}.png", (cover_dir / f"{label}.png",))
+    return _find_cover_file(cover_dir, (rom_path.stem, label))
 
 
 def import_lpl(
