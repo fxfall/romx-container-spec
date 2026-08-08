@@ -152,7 +152,12 @@ def _validate_metadata(value: Any) -> dict[str, Any]:
     return value
 
 
-def _json_bytes(metadata_path: Path, rom_bytes: bytes, crc32_override: str | None = None) -> bytes:
+def _json_bytes(
+    metadata_path: Path,
+    rom_bytes: bytes,
+    crc32_override: str | None = None,
+    cover_bytes: bytes | None = None,
+) -> bytes:
     raw = metadata_path.read_bytes()
     if raw.startswith(b"\xef\xbb\xbf"):
         raise RomxError("metadata must not contain a UTF-8 BOM")
@@ -162,6 +167,12 @@ def _json_bytes(metadata_path: Path, rom_bytes: bytes, crc32_override: str | Non
         raise RomxError(f"invalid metadata JSON: {exc}") from exc
     _validate_metadata(value)
     value["crc32"] = normalize_crc32(crc32_override) if crc32_override is not None else crc32(rom_bytes)
+    if cover_bytes is not None:
+        cover = {"mime_type": "image/png", "sha256": sha256(cover_bytes).hex()}
+        dimensions = _png_dimensions(cover_bytes)
+        if dimensions:
+            cover.update(width=dimensions[0], height=dimensions[1])
+        value["cover"] = cover
     # Compact, deterministic UTF-8 JSON. No filesystem path is embedded.
     return json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
@@ -177,12 +188,12 @@ def pack(
     rom = rom_path.read_bytes()
     if not rom:
         raise RomxError("ROM payload must not be empty")
-    metadata = _json_bytes(metadata_path, rom, crc32_override)
     cover = b""
     if cover_path is not None:
         cover = normalize_cover_path(cover_path, cover_size)
         if not cover.startswith(PNG_SIGNATURE):
             raise RomxError("cover is not a PNG file")
+    metadata = _json_bytes(metadata_path, rom, crc32_override, cover or None)
 
     rom_offset = 0
     metadata_offset = len(rom) if metadata else 0
