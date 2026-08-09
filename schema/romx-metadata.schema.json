@@ -3,27 +3,21 @@
   "$id": "https://romx.example/schema/romx-metadata-1.0.json",
   "title": "ROMX Metadata 1.0",
   "type": "object",
-  "required": ["schema_version", "label", "platform", "payload_format"],
+  "required": ["schema_version", "name", "platform", "payload_format", "crc32"],
   "properties": {
     "schema_version": { "const": "1.0" },
-    "label": { "type": "string", "minLength": 1, "maxLength": 512 },
-    "sort_label": { "type": "string", "maxLength": 512 },
-    "original_label": { "type": "string", "maxLength": 512 },
-    "alternative_labels": {
-      "type": "object",
-      "additionalProperties": { "type": "string", "maxLength": 512 }
-    },
+    "name": { "type": "string", "minLength": 1, "maxLength": 512 },
     "platform": {
       "enum": ["gb", "gbc", "gba", "nes", "snes", "nds", "3ds", "genesis"]
     },
     "payload_format": {
       "enum": ["gb", "gbc", "gba", "nes", "fds", "sfc", "smc", "nds", "3ds", "cci", "cia", "md", "gen", "smd", "bin"]
     },
-    "game_id": { "type": "string", "maxLength": 128 },
     "serial": { "type": "string", "maxLength": 128 },
-    "version": { "type": "string", "maxLength": 64 },
     "developer": { "type": "string", "maxLength": 256 },
     "publisher": { "type": "string", "maxLength": 256 },
+    "origin": { "type": "string", "maxLength": 128 },
+    "franchise": { "type": "string", "maxLength": 256 },
     "release_date": {
       "type": "string",
       "pattern": "^[0-9]{4}(-[0-9]{2}(-[0-9]{2})?)?$"
@@ -40,48 +34,29 @@
       "items": { "type": "string", "maxLength": 32 },
       "uniqueItems": true
     },
-    "languages": {
-      "type": "array",
-      "maxItems": 64,
-      "items": { "type": "string", "maxLength": 35 },
-      "uniqueItems": true
-    },
-    "players": {
-      "type": "object",
-      "properties": {
-        "min": { "type": "integer", "minimum": 1, "maximum": 255 },
-        "max": { "type": "integer", "minimum": 1, "maximum": 255 }
-      },
-      "required": ["min", "max"],
-      "additionalProperties": false
-    },
+    "language": { "type": "string", "maxLength": 256 },
+    "users": { "type": "integer", "minimum": 1, "maximum": 255 },
+    "coop": { "type": "boolean" },
+    "rumble": { "type": "boolean" },
+    "analog": { "type": "boolean" },
+    "enhancement_hw": { "type": "string", "maxLength": 256 },
+    "category": { "type": "string", "maxLength": 128 },
+    "media": { "type": "string", "maxLength": 64 },
     "description": { "type": "string", "maxLength": 32768 },
-    "tags": {
-      "type": "array",
-      "maxItems": 128,
-      "items": { "type": "string", "maxLength": 64 },
-      "uniqueItems": true
-    },
     "crc32": { "type": "string", "pattern": "^[0-9a-f]{8}$" },
-    "header_title": { "type": "string", "maxLength": 512 },
-    "header_id": { "type": "string", "maxLength": 128 },
+    "origin_crc32": { "type": "string", "pattern": "^[0-9a-f]{8}$" },
     "dump_status": {
       "enum": ["unknown", "good", "bad", "overdump", "hack", "translation", "homebrew"]
     },
     "cover": {
       "type": "object",
       "properties": {
-        "mime_type": { "const": "image/png" },
+        "mime_type": { "type": "string", "const": "image/png" },
         "width": { "type": "integer", "minimum": 1, "maximum": 8192 },
-        "height": { "type": "integer", "minimum": 1, "maximum": 8192 },
-        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+        "height": { "type": "integer", "minimum": 1, "maximum": 8192 }
       },
-      "required": ["mime_type"],
       "additionalProperties": false
     }
-  },
-  "patternProperties": {
-    "^x-[a-z0-9][a-z0-9._-]*$": true
   },
   "additionalProperties": false
 }

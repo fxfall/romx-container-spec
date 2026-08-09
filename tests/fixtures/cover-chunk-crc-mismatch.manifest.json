@@ -1,0 +1,51 @@
+{
+  "manifest_version": 2,
+  "fixture": "cover-chunk-crc-mismatch",
+  "file": "cover-chunk-crc-mismatch.romx",
+  "purpose": [
+    "png-chunk-crc-mismatch"
+  ],
+  "payload": {
+    "size": 3,
+    "computed_crc32": "352441c2"
+  },
+  "expected": {
+    "reader_open": "ROMX_OK",
+    "validate_all": "ROMX_OK",
+    "payload_extraction": "ROMX_OK",
+    "footer": {
+      "magic": "ROMX",
+      "version": 1,
+      "rom_offset": 0,
+      "rom_size": 3,
+      "metadata_offset": 3,
+      "metadata_size": 158,
+      "cover_offset": 161,
+      "cover_size": 68,
+      "reserved": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": 7,
+      "footer_size": 128,
+      "body_sha256": "b7748f1d5354d339f7e1b377d530dff31772a2bd36cbe5a7db6e1f8e7d96dac6"
+    },
+    "crc32": {
+      "payload_computed": "352441c2",
+      "metadata_declared": "352441c2",
+      "metadata_syntax": "valid_lookup_value",
+      "role": "database_lookup_only"
+    },
+    "sha256": {
+      "body_computed": "b7748f1d5354d339f7e1b377d530dff31772a2bd36cbe5a7db6e1f8e7d96dac6",
+      "body_footer": "b7748f1d5354d339f7e1b377d530dff31772a2bd36cbe5a7db6e1f8e7d96dac6"
+    },
+    "components": {
+      "structure": "valid",
+      "body_sha256": "valid",
+      "metadata": "valid",
+      "metadata_crc32": "valid_lookup_value",
+      "cover": "invalid"
+    },
+    "metadata_result": "ROMX_OK",
+    "cover_result": "ROMX_E_COVER_PNG",
+    "payload_salvage": false
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "manifest_version": 2,
+  "fixture": "regions-overlap",
+  "file": "regions-overlap.romx",
+  "purpose": [
+    "regions-overlap"
+  ],
+  "payload": {
+    "size": 3,
+    "computed_crc32": "352441c2"
+  },
+  "expected": {
+    "reader_open": "ROMX_E_OVERLAP",
+    "validate_all": "not_attempted",
+    "payload_extraction": "not_attempted",
+    "footer": {
+      "magic": "ROMX",
+      "version": 1,
+      "rom_offset": 0,
+      "rom_size": 3,
+      "metadata_offset": 2,
+      "metadata_size": 103,
+      "cover_offset": 0,
+      "cover_size": 0,
+      "reserved": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": 1,
+      "footer_size": 128,
+      "body_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "crc32": {
+      "payload_computed": "352441c2",
+      "metadata_declared": null,
+      "metadata_syntax": "not_attempted",
+      "role": "database_lookup_only"
+    },
+    "sha256": {
+      "body_computed": "e1812ad5374c727774d07cacaf4d0b526f40919f74ef5e07952ffa6f43e15e7a",
+      "body_footer": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "components": {
+      "structure": "invalid"
+    },
+    "metadata_result": "not_attempted",
+    "cover_result": "not_attempted",
+    "payload_salvage": false
+  }
+}

@@ -1,38 +1,36 @@
 {
   "schema_version": "1.0",
-  "label": "Example Game",
-  "sort_label": "Example Game",
-  "original_label": "Example Game",
-  "alternative_labels": {
-    "zh-Hans": "示例游戏",
-    "ja": "サンプルゲーム"
-  },
+  "name": "Example Game",
   "platform": "gba",
   "payload_format": "gba",
-  "game_id": "ABCD",
   "serial": "AGB-ABCD-USA",
-  "version": "Rev 1",
   "developer": "Example Studio",
   "publisher": "Example Publisher",
+  "origin": "United States",
+  "franchise": "Example Series",
   "release_date": "2004-10-01",
-  "genre": ["action", "platformer"],
-  "region": ["USA", "EUR"],
-  "languages": ["en", "fr"],
-  "players": {
-    "min": 1,
-    "max": 4
-  },
+  "genre": [
+    "action",
+    "platformer"
+  ],
+  "region": [
+    "USA",
+    "EUR"
+  ],
+  "language": "en,fr",
+  "users": 4,
+  "coop": true,
+  "rumble": false,
+  "analog": false,
+  "enhancement_hw": "Rumble cartridge",
+  "category": "Platform",
+  "media": "Cartridge",
   "description": "A complete ROMX metadata example.",
-  "tags": ["verified", "cartridge"],
   "crc32": "1234abcd",
-  "header_title": "EXAMPLE GAME",
-  "header_id": "ABCD",
   "dump_status": "good",
   "cover": {
     "mime_type": "image/png",
     "width": 600,
-    "height": 850,
-    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-  },
-  "x-org.example-rating": 4.5
+    "height": 850
+  }
 }

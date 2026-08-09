@@ -1,0 +1,51 @@
+{
+  "manifest_version": 2,
+  "fixture": "metadata-crc32-lookup",
+  "file": "metadata-crc32-lookup.romx",
+  "purpose": [
+    "crc32-is-database-lookup-not-integrity"
+  ],
+  "payload": {
+    "size": 3,
+    "computed_crc32": "352441c2"
+  },
+  "expected": {
+    "reader_open": "ROMX_OK",
+    "validate_all": "ROMX_OK",
+    "payload_extraction": "ROMX_OK",
+    "footer": {
+      "magic": "ROMX",
+      "version": 1,
+      "rom_offset": 0,
+      "rom_size": 3,
+      "metadata_offset": 3,
+      "metadata_size": 103,
+      "cover_offset": 0,
+      "cover_size": 0,
+      "reserved": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": 5,
+      "footer_size": 128,
+      "body_sha256": "592cc2ec7148c0a9f628ee058017a991227a5d86d4503c2696264534bdec2a1f"
+    },
+    "crc32": {
+      "payload_computed": "352441c2",
+      "metadata_declared": "00000000",
+      "metadata_syntax": "valid_lookup_value",
+      "role": "database_lookup_only"
+    },
+    "sha256": {
+      "body_computed": "592cc2ec7148c0a9f628ee058017a991227a5d86d4503c2696264534bdec2a1f",
+      "body_footer": "592cc2ec7148c0a9f628ee058017a991227a5d86d4503c2696264534bdec2a1f"
+    },
+    "components": {
+      "structure": "valid",
+      "body_sha256": "valid",
+      "metadata": "valid",
+      "metadata_crc32": "valid_lookup_value",
+      "cover": "absent"
+    },
+    "metadata_result": "ROMX_OK",
+    "cover_result": "ROMX_E_COVER_ABSENT",
+    "payload_salvage": false
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "manifest_version": 2,
+  "fixture": "footer-version-invalid",
+  "file": "footer-version-invalid.romx",
+  "purpose": [
+    "footer-version"
+  ],
+  "payload": {
+    "size": 3,
+    "computed_crc32": "352441c2"
+  },
+  "expected": {
+    "reader_open": "ROMX_E_INVALID_FOOTER",
+    "validate_all": "not_attempted",
+    "payload_extraction": "not_attempted",
+    "footer": {
+      "magic": "ROMX",
+      "version": 2,
+      "rom_offset": 0,
+      "rom_size": 3,
+      "metadata_offset": 0,
+      "metadata_size": 0,
+      "cover_offset": 0,
+      "cover_size": 0,
+      "reserved": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": 0,
+      "footer_size": 128,
+      "body_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "crc32": {
+      "payload_computed": "352441c2",
+      "metadata_declared": null,
+      "metadata_syntax": "not_attempted",
+      "role": "database_lookup_only"
+    },
+    "sha256": {
+      "body_computed": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+      "body_footer": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "components": {
+      "structure": "invalid"
+    },
+    "metadata_result": "not_attempted",
+    "cover_result": "not_attempted",
+    "payload_salvage": false
+  }
+}

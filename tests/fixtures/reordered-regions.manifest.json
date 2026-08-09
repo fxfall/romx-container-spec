@@ -1,0 +1,52 @@
+{
+  "manifest_version": 2,
+  "fixture": "reordered-regions",
+  "file": "reordered-regions.romx",
+  "purpose": [
+    "any-region-order",
+    "valid-cover"
+  ],
+  "payload": {
+    "size": 3,
+    "computed_crc32": "352441c2"
+  },
+  "expected": {
+    "reader_open": "ROMX_OK",
+    "validate_all": "ROMX_OK",
+    "payload_extraction": "ROMX_OK",
+    "footer": {
+      "magic": "ROMX",
+      "version": 1,
+      "rom_offset": 226,
+      "rom_size": 3,
+      "metadata_offset": 68,
+      "metadata_size": 158,
+      "cover_offset": 0,
+      "cover_size": 68,
+      "reserved": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": 7,
+      "footer_size": 128,
+      "body_sha256": "268f519c717fcf3814613842c0d47eb53151bd623ad746c211cd21c14845154c"
+    },
+    "crc32": {
+      "payload_computed": "352441c2",
+      "metadata_declared": "352441c2",
+      "metadata_syntax": "valid_lookup_value",
+      "role": "database_lookup_only"
+    },
+    "sha256": {
+      "body_computed": "268f519c717fcf3814613842c0d47eb53151bd623ad746c211cd21c14845154c",
+      "body_footer": "268f519c717fcf3814613842c0d47eb53151bd623ad746c211cd21c14845154c"
+    },
+    "components": {
+      "structure": "valid",
+      "body_sha256": "valid",
+      "metadata": "valid",
+      "metadata_crc32": "valid_lookup_value",
+      "cover": "valid"
+    },
+    "metadata_result": "ROMX_OK",
+    "cover_result": "ROMX_OK",
+    "payload_salvage": false
+  }
+}

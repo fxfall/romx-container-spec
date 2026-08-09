@@ -1,0 +1,75 @@
+{
+  "manifest_version": 1,
+  "kind": "writer_golden",
+  "fixture": "metadata-origin-crc32",
+  "file": "metadata-origin-crc32.romx",
+  "input": {
+    "payload_hex": "616263",
+    "metadata": {
+      "schema_version": "1.0",
+      "name": "ROMX writer golden",
+      "platform": "gb",
+      "payload_format": "gb",
+      "origin_crc32": "00000000"
+    },
+    "cover_hex": null,
+    "options": {
+      "crc32_override": null,
+      "origin_crc32_enabled": true,
+      "body_sha256_enabled": false
+    }
+  },
+  "canonical": {
+    "region_order": [
+      "rom",
+      "metadata",
+      "cover",
+      "footer"
+    ],
+    "metadata_encoding": "utf-8-json-no-bom-compact",
+    "footer_integer_encoding": "little-endian",
+    "reserved_bytes": "zero"
+  },
+  "expected": {
+    "file_size": 266,
+    "file_sha256": "d837c080fd8585a9def7f75774f959bbdca26d67446e0c67f466a0eede8dc60b",
+    "file_hex": "6162637b22736368656d615f76657273696f6e223a22312e30222c226e616d65223a22524f4d582077726974657220676f6c64656e222c22706c6174666f726d223a226762222c227061796c6f61645f666f726d6174223a226762222c226f726967696e5f6372633332223a223335323434316332222c226372633332223a223335323434316332227d524f4d5801000000000000000000000003000000000000000300000000000000870000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000800000000000000000000000000000000000000000000000000000000000000000000000",
+    "regions": {
+      "rom": {
+        "offset": 0,
+        "size": 3,
+        "hex": "616263"
+      },
+      "metadata": {
+        "offset": 3,
+        "size": 135,
+        "utf8": "{\"schema_version\":\"1.0\",\"name\":\"ROMX writer golden\",\"platform\":\"gb\",\"payload_format\":\"gb\",\"origin_crc32\":\"352441c2\",\"crc32\":\"352441c2\"}",
+        "hex": "7b22736368656d615f76657273696f6e223a22312e30222c226e616d65223a22524f4d582077726974657220676f6c64656e222c22706c6174666f726d223a226762222c227061796c6f61645f666f726d6174223a226762222c226f726967696e5f6372633332223a223335323434316332222c226372633332223a223335323434316332227d"
+      },
+      "cover": {
+        "offset": 0,
+        "size": 0,
+        "hex": null
+      },
+      "footer": {
+        "offset": 138,
+        "size": 128,
+        "hex": "524f4d5801000000000000000000000003000000000000000300000000000000870000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001000000800000000000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    "footer": {
+      "magic": "ROMX",
+      "version": 1,
+      "rom_offset": 0,
+      "rom_size": 3,
+      "metadata_offset": 3,
+      "metadata_size": 135,
+      "cover_offset": 0,
+      "cover_size": 0,
+      "reserved": "0000000000000000000000000000000000000000000000000000000000000000",
+      "flags": 1,
+      "footer_size": 128,
+      "body_sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  }
+}
