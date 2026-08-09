@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://romx.example/schema/romx-metadata-1.0.json",
-  "title": "ROMX Metadata 1.0",
+  "$id": "https://romx.example/schema/romx-metadata-0.1.0.json",
+  "title": "ROMX Metadata 0.1.0",
   "type": "object",
   "required": ["schema_version", "name", "platform", "payload_format", "crc32"],
   "properties": {
-    "schema_version": { "const": "1.0" },
+    "schema_version": { "const": "0.1.0" },
     "name": { "type": "string", "minLength": 1, "maxLength": 512 },
     "platform": {
       "enum": ["gb", "gbc", "gba", "nes", "snes", "nds", "3ds", "genesis"]

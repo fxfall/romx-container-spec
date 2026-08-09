@@ -20,13 +20,13 @@
       "rom_offset": 0,
       "rom_size": 3,
       "metadata_offset": 3,
-      "metadata_size": 106,
+      "metadata_size": 108,
       "cover_offset": 0,
       "cover_size": 0,
       "reserved": "0000000000000000000000000000000000000000000000000000000000000000",
       "flags": 5,
       "footer_size": 128,
-      "body_sha256": "c99905aad6d23164b95e5fc9e52b61647330b55d540b8229ae247db20ef57940"
+      "body_sha256": "1f3b0d5f0b9c9518bb5a21e1a30233adcb2bd838ffb8a2da5d28a4bb8a5f4bf7"
     },
     "crc32": {
       "payload_computed": "352441c2",
@@ -35,8 +35,8 @@
       "role": "database_lookup_only"
     },
     "sha256": {
-      "body_computed": "c99905aad6d23164b95e5fc9e52b61647330b55d540b8229ae247db20ef57940",
-      "body_footer": "c99905aad6d23164b95e5fc9e52b61647330b55d540b8229ae247db20ef57940"
+      "body_computed": "1f3b0d5f0b9c9518bb5a21e1a30233adcb2bd838ffb8a2da5d28a4bb8a5f4bf7",
+      "body_footer": "1f3b0d5f0b9c9518bb5a21e1a30233adcb2bd838ffb8a2da5d28a4bb8a5f4bf7"
     },
     "components": {
       "structure": "valid",

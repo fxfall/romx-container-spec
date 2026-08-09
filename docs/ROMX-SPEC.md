@@ -1,10 +1,10 @@
-# ROMX 1.0 Binary Specification
+# ROMX 0.1.0 Binary Specification
 
-**Status: ROMX 1.0 — stable and frozen.** This document is the first frozen
+**Status: ROMX 0.1.0 — stable and frozen.** This document is the first frozen
 baseline; the rules below are established before compatibility commitments.
 
 Integer encoding is unsigned little-endian. The footer is exactly 128 bytes.
-This document defines the byte semantics of the ROMX 1.0 container; the
+This document defines the byte semantics of the ROMX 0.1.0 container; the
 metadata schema is versioned separately.
 
 ## 1. Container layout
@@ -34,7 +34,7 @@ All footer integers are unsigned little-endian.
 | Offset | Size | Type | Field | Requirement |
 |---:|---:|---|---|---|
 | `0x00` | 4 | bytes | `magic` | ASCII `ROMX` |
-| `0x04` | 4 | uint32 | `version` | Exactly `1` |
+| `0x04` | 4 | uint32 | `version` | Wire value `1`, identifying ROMX 0.1.0 |
 | `0x08` | 8 | uint64 | `rom_offset` | Start of ROM payload |
 | `0x10` | 8 | uint64 | `rom_size` | Greater than zero |
 | `0x18` | 8 | uint64 | `metadata_offset` | Start of metadata when present |
@@ -55,7 +55,10 @@ body-partition rule in section 1 is additionally required.
 `body_sha256` is the only hash stored in the footer. If `HAS_BODY_SHA256` is
 clear, it must be 32 zero bytes. If set, it covers every body byte and a
 mismatch makes the container structurally invalid. The 32-byte `reserved`
-field has no ROM SHA-256 meaning in ROMX 1.0.
+field has no ROM SHA-256 meaning in ROMX 0.1.0.
+
+The footer `version` is a wire compatibility code, not a semantic version
+number: ROMX 0.1.0 uses the value `1`. It must not be interpreted as ROMX 1.x.
 
 ### Flags
 
@@ -101,7 +104,7 @@ unpaired UTF-16 surrogates are invalid; a valid surrogate pair is accepted as
 one Unicode scalar. The JSON
 top-level value must be an object conforming to
 `schema/romx-metadata.schema.json`. That schema has
-`additionalProperties: false`; unknown ROMX 1.0 fields are invalid. Invalid
+`additionalProperties: false`; unknown ROMX 0.1.0 fields are invalid. Invalid
 metadata may be ignored for payload extraction after the footer and enabled
 body SHA have passed.
 
@@ -152,14 +155,15 @@ as a cache key.
 
 ## 7. Version and schema evolution
 
-ROMX 1.0 is a frozen format. A compatibility change may only add conformance
+ROMX 0.1.0 is a frozen format. A compatibility change may only add conformance
 fixtures or clarify wording without changing byte semantics. Changing the
 footer layout, any field's meaning, or a validity rule requires a new format
-version (for example, ROMX 2.0); a ROMX 1.0 reader must reject that version.
+version (for example, ROMX 0.2.0); a ROMX 0.1.0 reader must reject that version.
 
 The metadata schema evolves independently from the container. Its
-`schema_version` identifies the metadata contract while the footer `version`
-identifies the binary container. A backward-compatible metadata-only change
+`schema_version` identifies the metadata contract while the footer wire `version`
+identifies the binary container. The ROMX 0.1.0 metadata schema uses
+`schema_version: "0.1.0"`. A backward-compatible metadata-only change
 may publish a new schema document and schema version without changing footer
 bytes; readers that do not understand that schema must treat metadata as
 unsupported/invalid but may still extract the payload. A change that affects

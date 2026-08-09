@@ -1,6 +1,6 @@
-# ROMX 1.0 frozen fixtures
+# ROMX 0.1.0 frozen fixtures
 
-This directory is the language-neutral ROMX 1.0 conformance corpus. Every
+This directory is the language-neutral ROMX 0.1.0 conformance corpus. Every
 `*.romx` file has a same-name `*.manifest.json` companion. The binary and its
 manifest are frozen together: implementations must not silently regenerate,
 normalize, or delete a fixture when running tests.
@@ -29,7 +29,7 @@ expectation labels; implementations may map them to their own error type.
 | `footer-magic-invalid`, `footer-version-invalid`, `footer-size-invalid` | Reject invalid footer identity fields. |
 | `offset-overflow`, `offset-out-of-bounds`, `regions-overlap` | Reject unsafe region arithmetic and layout. |
 | `flags-mismatch` | Reject flags that disagree with optional region sizes. |
-| `reserved-nonzero` | Ignore the v1 reserved bytes at `0x38`; new writers still zero them. |
+| `reserved-nonzero` | Ignore the ROMX 0.1.0 reserved bytes at `0x38`; new writers still zero them. |
 | `body-sha256-disabled-nonzero` | Reject a nonzero body hash when its flag is clear. |
 | `body-sha256-mismatch` | Reject an enabled body SHA-256 mismatch. |
 | `metadata-bom`, `metadata-invalid-utf8`, `metadata-duplicate-key` | Mark metadata invalid without treating the optional region as ROM. |

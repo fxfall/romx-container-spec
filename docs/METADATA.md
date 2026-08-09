@@ -1,4 +1,4 @@
-# ROMX Metadata 1.0
+# ROMX Metadata 0.1.0
 
 Metadata is an optional UTF-8 JSON object embedded in the ROMX container. It is located by the footer and never by an external path. The normative field constraints are in `schema/romx-metadata.schema.json`.
 
@@ -8,7 +8,7 @@ ROMX uses `name` as the canonical display name because the frontend keeps game r
 
 | Field | Type | Meaning |
 |---|---|---|
-| `schema_version` | string | Must be `1.0` |
+| `schema_version` | string | Must be `0.1.0` |
 | `name` | string | Canonical game display name |
 | `platform` | string | Platform ID from `PLATFORMS.md` |
 | `payload_format` | string | Extracted ROM format, without a leading dot |

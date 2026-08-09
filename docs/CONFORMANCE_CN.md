@@ -1,6 +1,6 @@
-# ROMX 1.0 一致性冻结夹具
+# ROMX 0.1.0 一致性冻结夹具
 
-仓库在 [`tests/fixtures`](../tests/fixtures/) 中提供跨语言使用的 ROMX 1.0
+仓库在 [`tests/fixtures`](../tests/fixtures/) 中提供跨语言使用的 ROMX 0.1.0
 冻结测试集，可由 libromx、ROMX Core、Python 参考实现和其他读取器共同使用。
 
 每个夹具由一对文件组成：
@@ -14,7 +14,7 @@ manifest 是测试预期的权威来源，包含：
 
 - `expected.reader_open`：footer 与区域表是否应被接受；
 - `expected.validate_all`：完成可选 metadata 与 cover 检查后的结果；
-- `expected.footer`：本 fixture 涉及的 v1 footer 字段；
+- `expected.footer`：本 fixture 涉及的 ROMX 0.1.0 footer 字段；
 - `expected.crc32`：payload 的计算值、metadata 查找值及其数据库查找语义；
 - `expected.sha256`：body 的计算值与 footer 值；
 - `expected.components`：结构、可选 body hash、metadata、CRC32 语法和 cover 状态；

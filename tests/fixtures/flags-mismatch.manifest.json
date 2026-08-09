@@ -19,7 +19,7 @@
       "rom_offset": 0,
       "rom_size": 3,
       "metadata_offset": 3,
-      "metadata_size": 103,
+      "metadata_size": 105,
       "cover_offset": 0,
       "cover_size": 0,
       "reserved": "0000000000000000000000000000000000000000000000000000000000000000",
@@ -34,7 +34,7 @@
       "role": "database_lookup_only"
     },
     "sha256": {
-      "body_computed": "e1812ad5374c727774d07cacaf4d0b526f40919f74ef5e07952ffa6f43e15e7a",
+      "body_computed": "334b2b3d2a83c747b1ab744a97a592ae59a885d1a7308ea2fc5d96d43a092cee",
       "body_footer": "0000000000000000000000000000000000000000000000000000000000000000"
     },
     "components": {

@@ -1,4 +1,4 @@
-# ROMX 1.0 conformance fixtures
+# ROMX 0.1.0 conformance fixtures
 
 The repository ships a frozen corpus in [`tests/fixtures`](../tests/fixtures/).
 It is intended to be consumed by libromx, ROMX Core, the Python reference
@@ -15,7 +15,7 @@ The manifest is authoritative for the test expectation. It contains:
 
 - `expected.reader_open`: whether the footer and region table are accepted;
 - `expected.validate_all`: the result after optional metadata and cover checks;
-- `expected.footer`: every v1 footer field that is relevant to the fixture;
+- `expected.footer`: every ROMX 0.1.0 footer field that is relevant to the fixture;
 - `expected.crc32`: the computed payload value, metadata lookup value, and its database-lookup semantics;
 - `expected.sha256`: the computed and footer body hashes;
 - `expected.components`: structure, optional body hash, metadata, CRC32 syntax, and cover statuses;

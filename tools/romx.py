@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small ROMX 1.0 reference implementation.
+"""Small ROMX 0.1.0 reference implementation.
 
 The implementation mirrors the specification:
 
@@ -30,7 +30,8 @@ from typing import Any
 
 
 MAGIC = b"ROMX"
-VERSION = 1
+# ROMX 0.1.0 uses wire version code 1 in the fixed footer.
+WIRE_VERSION = 1
 FOOTER_SIZE = 128
 FLAG_METADATA = 1 << 0
 FLAG_COVER = 1 << 1
@@ -312,8 +313,8 @@ def _validate_metadata(value: Any, *, require_crc: bool = True) -> dict[str, Any
     missing = [key for key in required if key not in value]
     if missing:
         raise RomxError(f"metadata missing required fields: {', '.join(missing)}")
-    if value["schema_version"] != "1.0":
-        raise RomxError("metadata schema_version must be '1.0'")
+    if value["schema_version"] != "0.1.0":
+        raise RomxError("metadata schema_version must be '0.1.0'")
     _validate_text(value.get("name"), "name", 512, required=True)
     if value.get("platform") not in PLATFORMS:
         raise RomxError(f"unsupported platform: {value.get('platform')!r}")
@@ -420,7 +421,7 @@ def pack(
     if cover:
         flags |= FLAG_COVER
     footer = FOOTER.pack(
-        MAGIC, VERSION,
+        MAGIC, WIRE_VERSION,
         rom_offset, len(rom),
         metadata_offset, len(metadata),
         cover_offset, len(cover),
@@ -436,7 +437,7 @@ def _read_footer(path: Path) -> tuple[bytes, dict[str, Any]]:
         raise RomxError("file is shorter than the 128-byte footer")
     footer = FOOTER.unpack(data[-FOOTER_SIZE:])
     magic, version, rom_offset, rom_size, metadata_offset, metadata_size, cover_offset, cover_size, _reserved, flags, footer_size, body_hash = footer
-    if magic != MAGIC or version != VERSION or footer_size != FOOTER_SIZE:
+    if magic != MAGIC or version != WIRE_VERSION or footer_size != FOOTER_SIZE:
         raise RomxError("invalid ROMX magic, version, or footer_size")
     if flags & ~(FLAG_METADATA | FLAG_COVER | FLAG_BODY_SHA256):
         raise RomxError("reserved footer flags are set")
@@ -719,7 +720,7 @@ def import_lpl(
         if payload_format in {"gb", "gbc"}:
             payload_format = classify_gb_payload(rom_bytes, payload_format)
         name = item.get("label") or rom_path.stem
-        metadata: dict[str, Any] = {"schema_version": "1.0", "name": str(name), "platform": _platform_for(payload_format, playlist_name), "payload_format": payload_format}
+        metadata: dict[str, Any] = {"schema_version": "0.1.0", "name": str(name), "platform": _platform_for(payload_format, playlist_name), "payload_format": payload_format}
         identity = _lpl_item_identity(item.get("crc32"))
         if identity and identity[0] == "serial":
             metadata["serial"] = identity[1]
@@ -831,7 +832,7 @@ def _add_body_sha_option(parser: argparse.ArgumentParser) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="ROMX 1.0 packer, inspector, verifier, extractor, LPL importer, and LPL exporter")
+    parser = argparse.ArgumentParser(description="ROMX 0.1.0 packer, inspector, verifier, extractor, LPL importer, and LPL exporter")
     sub = parser.add_subparsers(dest="command", required=True)
     pack_parser = sub.add_parser("pack", help="create a ROMX file")
     pack_parser.add_argument("rom", type=Path)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate and verify the frozen ROMX 1.0 conformance fixtures.
+"""Generate and verify the frozen ROMX 0.1.0 conformance fixtures.
 
 The fixture bytes are deliberately tiny and deterministic.  Reader fixtures
 exercise container boundary rules; writer golden fixtures freeze canonical
@@ -26,6 +26,7 @@ from typing import Any
 
 
 FOOTER_SIZE = 128
+WIRE_VERSION = 1  # ROMX 0.1.0 wire compatibility code
 UINT64_MAX = (1 << 64) - 1
 FLAG_METADATA = 1 << 0
 FLAG_COVER = 1 << 1
@@ -63,7 +64,7 @@ def metadata_bytes(
     has_cover: bool = False,
 ) -> bytes:
     value: dict[str, Any] = {
-        "schema_version": "1.0",
+        "schema_version": "0.1.0",
         "name": name,
         "platform": "gb",
         "payload_format": "gb",
@@ -138,7 +139,7 @@ def container(
     body_bytes = bytes(body)
     fields: dict[str, int | str] = {
         "magic": "ROMX",
-        "version": 1,
+        "version": WIRE_VERSION,
         "rom_offset": offsets["rom"],
         "rom_size": len(parts["rom"]),
         "metadata_offset": offsets["metadata"] if parts["metadata"] else 0,
@@ -325,7 +326,7 @@ def writer_manifest(
 
 def writer_fixture_specs() -> list[tuple[bytes, dict[str, Any]]]:
     base_metadata: dict[str, Any] = {
-        "schema_version": "1.0",
+        "schema_version": "0.1.0",
         "name": "ROMX writer golden",
         "platform": "gb",
         "payload_format": "gb",
@@ -575,19 +576,19 @@ def fixture_specs() -> list[tuple[bytes, dict[str, Any]]]:
         ("metadata-bom", b"\xef\xbb\xbf" + valid_metadata, "metadata-json-bom", "ROMX_E_METADATA_UTF8"),
         (
             "metadata-invalid-utf8",
-            b'{"schema_version":"1.0","name":"A\xff","platform":"gb","payload_format":"gb"}',
+            b'{"schema_version":"0.1.0","name":"A\xff","platform":"gb","payload_format":"gb"}',
             "metadata-invalid-utf8",
             "ROMX_E_METADATA_UTF8",
         ),
         (
             "metadata-duplicate-key",
-            b'{"schema_version":"1.0","name":"A","name":"B","platform":"gb","payload_format":"gb"}',
+            b'{"schema_version":"0.1.0","name":"A","name":"B","platform":"gb","payload_format":"gb"}',
             "metadata-json-duplicate-key",
             "ROMX_E_METADATA_SCHEMA",
         ),
         (
             "metadata-nested-duplicate-key",
-            b'{"schema_version":"1.0","name":"A","platform":"gb","payload_format":"gb","crc32":"352441c2","cover":{"mime_type":"image/png","mime_type":"image/png"}}',
+            b'{"schema_version":"0.1.0","name":"A","platform":"gb","payload_format":"gb","crc32":"352441c2","cover":{"mime_type":"image/png","mime_type":"image/png"}}',
             "metadata-nested-json-duplicate-key",
             "ROMX_E_METADATA_SCHEMA",
         ),

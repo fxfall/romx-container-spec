@@ -1,9 +1,9 @@
-# ROMX 1.0 二进制规范
+# ROMX 0.1.0 二进制规范
 
-**状态：ROMX 1.0——稳定、冻结。** 本文是首次冻结基线；以下规则在兼容性承诺
+**状态：ROMX 0.1.0——稳定、冻结。** 本文是首次冻结基线；以下规则在兼容性承诺
 建立前确定。
 
-整数使用无符号小端编码，footer 固定为 128 字节。本文件定义 ROMX 1.0
+整数使用无符号小端编码，footer 固定为 128 字节。本文件定义 ROMX 0.1.0
 容器的字节语义；metadata schema 独立版本化。
 
 ## 1. 容器布局
@@ -29,7 +29,7 @@ footer 中所有整数均为无符号小端编码。
 | 偏移 | 大小 | 类型 | 字段 | 要求 |
 |---:|---:|---|---|---|
 | `0x00` | 4 | bytes | `magic` | ASCII `ROMX` |
-| `0x04` | 4 | uint32 | `version` | 必须为 `1` |
+| `0x04` | 4 | uint32 | `version` | wire 值为 `1`，表示 ROMX 0.1.0 |
 | `0x08` | 8 | uint64 | `rom_offset` | ROM payload 起点 |
 | `0x10` | 8 | uint64 | `rom_size` | 大于 0 |
 | `0x18` | 8 | uint64 | `metadata_offset` | metadata 存在时的起点 |
@@ -47,7 +47,10 @@ footer 中所有整数均为无符号小端编码。
 
 footer 中唯一保存的 hash 是 `body_sha256`。`HAS_BODY_SHA256` 未设置时，该字段
 必须为 32 个零字节；设置时覆盖 footer 前的所有 body 字节，校验不匹配则容器
-结构无效。`reserved` 的 32 字节在 ROMX 1.0 中不代表 ROM SHA-256。
+结构无效。`reserved` 的 32 字节在 ROMX 0.1.0 中不代表 ROM SHA-256。
+
+footer 的 `version` 是 wire 兼容性编号，而不是语义版本号：ROMX 0.1.0 使用值
+`1`。不得将其解释为 ROMX 1.x。
 
 ### Flags
 
@@ -82,7 +85,7 @@ metadata 是可选的严格 UTF-8 JSON，禁止 BOM。解析和校验依据 RFC 
 转义中的孤立 UTF-16 surrogate 无效；合法的 surrogate pair 按一个 Unicode 标量接受。
 顶层
 必须是符合 `schema/romx-metadata.schema.json` 的 object；schema 设置
-`additionalProperties: false`，未知 ROMX 1.0 字段无效。footer 和启用的 body SHA
+`additionalProperties: false`，未知 ROMX 0.1.0 字段无效。footer 和启用的 body SHA
 通过后，无效 metadata 可以被报告并忽略，payload 仍可提取。
 
 `cover`（如果存在）必须是只包含以下可选属性的 object：`mime_type`（值为
@@ -122,12 +125,13 @@ footer 或启用的 body SHA 失败必须拒绝容器。无效的可选 metadata
 
 ## 7. 版本与 schema 演进
 
-ROMX 1.0 是冻结格式。兼容性修改只能新增 conformance fixture，或澄清不改变字节
+ROMX 0.1.0 是冻结格式。兼容性修改只能新增 conformance fixture，或澄清不改变字节
 语义的文字。修改 footer 布局、字段语义或任何有效性规则，必须提升格式版本（例如
-ROMX 2.0）；ROMX 1.0 读取器必须拒绝新版本。
+ROMX 0.2.0）；ROMX 0.1.0 读取器必须拒绝新版本。
 
 metadata schema 与二进制容器独立演进：`schema_version` 标识 metadata 合约，footer
-`version` 标识二进制容器。只改变 metadata 且保持向后兼容时，可以发布新的 schema
+wire `version` 标识二进制容器。ROMX 0.1.0 metadata schema 使用
+`schema_version: "0.1.0"`。只改变 metadata 且保持向后兼容时，可以发布新的 schema
 文档和 schema 版本而不改变 footer 字节；不理解该 schema 的读取器应将 metadata
 视为不支持/无效，但仍可提取 payload。涉及 footer 字节、区域语义或二进制有效性的
 变化不能只靠 metadata schema 版本承载，必须使用新的 ROMX 格式版本。

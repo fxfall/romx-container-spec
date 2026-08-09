@@ -9,13 +9,13 @@ A ROMX file contains:
 - an optional embedded PNG cover;
 - a fixed 128-byte footer with offsets, lengths, and an optional body SHA-256.
 
-ROMX 1.0 uses RetroArch-compatible CRC-32/ISO-HDLC for metadata `crc32`,
+ROMX 0.1.0 uses RetroArch-compatible CRC-32/ISO-HDLC for metadata `crc32`,
 serialized as lower-case eight-digit hexadecimal. The footer stores no payload
 SHA-256; only the optional container-wide body SHA-256 is stored there.
 
 The container extension is the original ROM extension plus `x`: `.gba` becomes `.gbax`, `.nes` becomes `.nesx`, and `.nds` becomes `.ndsx`.
 
-This repository defines **ROMX 1.0**, a stable and frozen binary format. It contains the binary specification, metadata schema, platform rules, examples, conformance fixtures, and a small Python reference implementation.
+This repository defines **ROMX 0.1.0**, a stable and frozen binary format. It contains the binary specification, metadata schema, platform rules, examples, conformance fixtures, and a small Python reference implementation.
 
 ## Documentation
 
@@ -65,12 +65,12 @@ ROMX 文件包含：
 - 可选的内嵌 PNG 封面；
 - 固定 128 字节 footer，记录偏移、长度和可选的 body SHA-256。
 
-ROMX 1.0 的 metadata `crc32` 使用与 RetroArch 兼容的 CRC-32/ISO-HDLC，序列化为
+ROMX 0.1.0 的 metadata `crc32` 使用与 RetroArch 兼容的 CRC-32/ISO-HDLC，序列化为
 8 位小写十六进制。Footer 不保存 payload SHA-256，只保存可选的容器 body SHA-256。
 
 容器扩展名是在原 ROM 扩展名后追加 `x`：`.gba` 变为 `.gbax`，`.nes` 变为 `.nesx`，`.nds` 变为 `.ndsx`。
 
-本仓库定义 **ROMX 1.0**，这是稳定且冻结的二进制格式，包含二进制规范、metadata Schema、平台规则、示例、冻结一致性夹具和 Python 参考实现。
+本仓库定义 **ROMX 0.1.0**，这是稳定且冻结的二进制格式，包含二进制规范、metadata Schema、平台规则、示例、冻结一致性夹具和 Python 参考实现。
 
 中文文档：
 

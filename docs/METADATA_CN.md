@@ -1,4 +1,4 @@
-# ROMX Metadata 1.0
+# ROMX Metadata 0.1.0
 
 Metadata 是内嵌在 ROMX 容器中的可选 UTF-8 JSON object。它由 footer 定位，不使用外部路径。规范字段约束以 `schema/romx-metadata.schema.json` 为准。
 
@@ -8,7 +8,7 @@ ROMX 使用 `name` 作为规范显示名称，因为前端将游戏记录保存�
 
 | 字段 | 类型 | 含义 |
 |---|---|---|
-| `schema_version` | string | 必须为 `1.0` |
+| `schema_version` | string | 必须为 `0.1.0` |
 | `name` | string | 规范游戏显示名称 |
 | `platform` | string | `PLATFORMS.md` 中的平台 ID |
 | `payload_format` | string | 提取后的 ROM 格式，不含点号 |
