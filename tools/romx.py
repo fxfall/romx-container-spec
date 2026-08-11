@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small ROMX 0.1.0 reference implementation.
+"""ROMX 0.1.1 reference implementation and conversion helper.
 
 The implementation mirrors the specification:
 
@@ -11,8 +11,10 @@ The implementation mirrors the specification:
 
 This file uses the Python standard library plus Pillow for optional cover
 conversion. PNG covers are byte-preserved by default; Pillow is only needed
-for non-PNG covers or an explicit cover resolution. It is an implementation
-guide and validation aid, not a production packer.
+for non-PNG covers or an explicit cover resolution. It can extract metadata
+and artwork from supported ROM headers/containers and optionally query the
+public libretro database and thumbnail server. It is an implementation guide
+and validation aid, not a production packer.
 """
 
 from __future__ import annotations
@@ -24,6 +26,9 @@ import json
 import re
 import struct
 import sys
+import urllib.error
+import urllib.parse
+import urllib.request
 import zlib
 from pathlib import Path
 from typing import Any
@@ -41,11 +46,100 @@ COVER_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp")
 MAX_COVER_BYTES = 32 * 1024 * 1024
 MAX_COVER_DIMENSION = 8192
 ZERO_SHA256 = b"\0" * 32
+DEFAULT_SCHEMA_VERSION = "0.1.1"
+SUPPORTED_SCHEMA_VERSIONS = {"0.1.0", "0.1.1"}
+LIBRETRO_THUMBNAIL_BASE = "https://thumbnails.libretro.com"
+LIBRETRO_PLAYLISTS = {
+    "gb": "Nintendo - Game Boy",
+    "gbc": "Nintendo - Game Boy Color",
+    "gba": "Nintendo - Game Boy Advance",
+    "nes": "Nintendo - NES",
+    "fds": "Nintendo - Famicom Disk System",
+    "snes": "Nintendo - Super Nintendo Entertainment System",
+    "nds": "Nintendo - Nintendo DS",
+    "n64": "Nintendo - Nintendo 64",
+    "psp": "Sony - PlayStation Portable",
+    "ps1": "Sony - PlayStation",
+    "ps2": "Sony - PlayStation 2",
+    "genesis": "Sega - Mega Drive - Genesis",
+    "genesis32x": "Sega - 32X",
+    "sms": "Sega - Master System - Mark III",
+    "gamegear": "Sega - Game Gear",
+    "pce": "NEC - PC Engine - TurboGrafx 16",
+    "pcecd": "NEC - PC Engine CD - TurboGrafx-CD",
+    "segacd": "Sega - Sega CD - Mega CD",
+    "saturn": "Sega - Saturn",
+    "dreamcast": "Sega - Dreamcast",
+    "gamecube": "Nintendo - GameCube",
+    "wii": "Nintendo - Wii",
+    "3ds": "Nintendo - 3DS",
+}
+LIBRETRO_DAT_URLS = {
+    "psp": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Sony%20-%20PlayStation%20Portable.dat",
+    "ps1": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/redump/Sony%20-%20PlayStation.dat",
+    "ps2": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/redump/Sony%20-%20PlayStation%202.dat",
+    "pcecd": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/redump/NEC%20-%20PC%20Engine%20CD%20-%20TurboGrafx-CD.dat",
+    "segacd": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/redump/Sega%20-%20Mega-CD%20-%20Sega%20CD.dat",
+    "saturn": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/redump/Sega%20-%20Saturn.dat",
+    "dreamcast": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/redump/Sega%20-%20Dreamcast.dat",
+    "gamecube": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/redump/Nintendo%20-%20GameCube.dat",
+    "wii": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/redump/Nintendo%20-%20Wii.dat",
+    "nds": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Nintendo%20-%20Nintendo%20DS.dat",
+    "nes": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Nintendo%20-%20Nintendo%20Entertainment%20System.dat",
+    "pce": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/NEC%20-%20PC%20Engine%20-%20TurboGrafx%2016.dat",
+    "gba": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Nintendo%20-%20Game%20Boy%20Advance.dat",
+    "gb": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Nintendo%20-%20Game%20Boy.dat",
+    "gbc": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Nintendo%20-%20Game%20Boy%20Color.dat",
+    "n64": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Nintendo%20-%20Nintendo%2064.dat",
+    "fds": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Nintendo%20-%20Family%20Computer%20Disk%20System.dat",
+    "snes": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Nintendo%20-%20Super%20Nintendo%20Entertainment%20System.dat",
+    "genesis": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Sega%20-%20Mega%20Drive%20-%20Genesis.dat",
+    "genesis32x": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Sega%20-%2032X.dat",
+    "sms": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Sega%20-%20Master%20System%20-%20Mark%20III.dat",
+    "gamegear": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Sega%20-%20Game%20Gear.dat",
+    "3ds": "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Nintendo%20-%20Nintendo%203DS.dat",
+}
+LIBRETRO_PROFILE_DAT_URLS = {
+    ("wii", "wad"): "https://raw.githubusercontent.com/libretro/libretro-database/master/metadat/no-intro/Nintendo%20-%20Wii%20(Digital).dat",
+}
+# This is the key field selected by libretro-build-database.sh for the
+# corresponding compiled database.  It is deliberately explicit: a serial
+# database must not silently fall back to a full-file CRC, and vice versa.
+LIBRETRO_MATCH_MODES = {
+    "gb": "crc32", "gbc": "crc32", "gba": "crc32", "nes": "crc32", "fds": "crc32",
+    "snes": "crc32", "nds": "crc32", "n64": "crc32", "genesis": "crc32",
+    "genesis32x": "crc32", "sms": "crc32", "gamegear": "crc32", "pce": "crc32",
+    "psp": "serial", "ps1": "serial", "pcecd": "crc32", "segacd": "serial",
+    "saturn": "serial", "dreamcast": "serial", "gamecube": "serial", "wii": "serial",
+    "ps2": "serial", "3ds": "crc32",
+}
 
-PLATFORMS = {"gb", "gbc", "gba", "nes", "snes", "nds", "3ds", "genesis"}
+
+def libretro_match_mode(platform: str, payload_format: str | None = None) -> str | None:
+    """Return the libretro database key for a platform/profile pair."""
+    if platform == "psp" and payload_format in {"elf", "prx"}:
+        # PSP homebrew does not have a stable UMD/PSP-Database serial profile.
+        return None
+    # The build table has a separate CRC-indexed Wii Digital database; a WAD
+    # is the only 0.1.1 Wii profile that maps to that database.
+    if platform == "wii" and payload_format == "wad":
+        return "crc32"
+    return LIBRETRO_MATCH_MODES.get(platform)
+
+
+def libretro_dat_url(platform: str, payload_format: str | None = None) -> str | None:
+    return LIBRETRO_PROFILE_DAT_URLS.get((platform, payload_format)) or LIBRETRO_DAT_URLS.get(platform)
+
+PLATFORMS = {
+    "gb", "gbc", "gba", "nes", "fds", "snes", "nds", "n64", "psp",
+    "genesis", "genesis32x", "sms", "gamegear", "pce", "ps1", "pcecd",
+    "segacd", "saturn", "dreamcast", "gamecube", "wii", "ps2", "3ds",
+}
 PAYLOAD_FORMATS = {
-    "gb", "gbc", "gba", "nes", "fds", "sfc", "smc", "nds", "3ds",
-    "cci", "cia", "md", "gen", "smd", "bin",
+    "gb", "gbc", "gba", "nes", "unf", "unif", "fds", "sfc", "smc", "nds",
+    "z64", "n64", "v64", "iso", "cso", "pbp", "chd", "elf", "prx", "md",
+    "gen", "smd", "32x", "sms", "gg", "pce", "cdi", "gcm", "wbfs", "rvz",
+    "wia", "wad", "zso", "3ds", "cci", "cxi", "app",
 }
 METADATA_FIELDS = {
     "schema_version", "name", "platform", "payload_format", "serial",
@@ -313,8 +407,8 @@ def _validate_metadata(value: Any, *, require_crc: bool = True) -> dict[str, Any
     missing = [key for key in required if key not in value]
     if missing:
         raise RomxError(f"metadata missing required fields: {', '.join(missing)}")
-    if value["schema_version"] != "0.1.0":
-        raise RomxError("metadata schema_version must be '0.1.0'")
+    if value["schema_version"] not in SUPPORTED_SCHEMA_VERSIONS:
+        raise RomxError("metadata schema_version must be '0.1.0' or '0.1.1'")
     _validate_text(value.get("name"), "name", 512, required=True)
     if value.get("platform") not in PLATFORMS:
         raise RomxError(f"unsupported platform: {value.get('platform')!r}")
@@ -366,18 +460,492 @@ def _validate_metadata(value: Any, *, require_crc: bool = True) -> dict[str, Any
     return value
 
 
+def _crc32_path(path: Path, chunk_size: int = 1024 * 1024) -> str:
+    """Calculate the ROM CRC32 without loading a large image into memory."""
+    checksum = 0
+    with path.open("rb") as stream:
+        while True:
+            block = stream.read(chunk_size)
+            if not block:
+                break
+            checksum = zlib.crc32(block, checksum)
+    return f"{checksum & 0xffffffff:08x}"
+
+
+def _read_at(path: Path, offset: int, size: int) -> bytes:
+    if offset < 0 or size < 0:
+        raise RomxError("negative file read range")
+    with path.open("rb") as stream:
+        stream.seek(offset)
+        return stream.read(size)
+
+
+class _Iso9660Reader:
+    """Small, read-only ISO9660 reader used for PSP PARAM.SFO and artwork.
+
+    It seeks to individual extents and therefore does not materialize a whole
+    ISO (which matters for multi-gigabyte PSP images).
+    """
+
+    def __init__(self, path: Path):
+        self.path = path
+        self.sector_size = 2048
+        self._root: tuple[int, int, bool] | None = None
+        self._load_primary_volume_descriptor()
+
+    @staticmethod
+    def _record(raw: bytes, offset: int) -> tuple[str, int, int, bool, int] | None:
+        if offset >= len(raw):
+            return None
+        length = raw[offset]
+        if length == 0:
+            return None
+        if length < 34 or offset + length > len(raw):
+            raise RomxError("invalid ISO9660 directory record")
+        record = raw[offset:offset + length]
+        extent = struct.unpack_from("<I", record, 2)[0]
+        size = struct.unpack_from("<I", record, 10)[0]
+        flags = record[25]
+        name_len = record[32]
+        if 33 + name_len > length:
+            raise RomxError("ISO9660 directory identifier exceeds record")
+        identifier = record[33:33 + name_len].decode("ascii", "replace")
+        if identifier in {"\x00", "\x01"}:
+            name = "." if identifier == "\x00" else ".."
+        else:
+            name = identifier.split(";", 1)[0].rstrip(".")
+        return name, extent, size, bool(flags & 2), length
+
+    def _load_primary_volume_descriptor(self) -> None:
+        pvd = _read_at(self.path, 16 * self.sector_size, self.sector_size)
+        if len(pvd) != self.sector_size or pvd[1:6] != b"CD001" or pvd[0] != 1:
+            raise RomxError("payload is not a readable ISO9660 image")
+        sector_size = struct.unpack_from("<H", pvd, 128)[0]
+        if sector_size <= 0 or sector_size > 0x10000:
+            raise RomxError("invalid ISO9660 logical block size")
+        self.sector_size = sector_size
+        record = self._record(pvd, 156)
+        if record is None or not record[3]:
+            raise RomxError("ISO9660 root directory is missing")
+        self._root = (record[1], record[2], True)
+
+    def _entries(self, extent: int, size: int) -> list[tuple[str, int, int, bool]]:
+        raw = _read_at(self.path, extent * self.sector_size, size)
+        if len(raw) != size:
+            raise RomxError("ISO9660 directory is truncated")
+        result: list[tuple[str, int, int, bool]] = []
+        offset = 0
+        while offset < len(raw):
+            length = raw[offset]
+            if length == 0:
+                offset = ((offset // self.sector_size) + 1) * self.sector_size
+                continue
+            parsed = self._record(raw, offset)
+            if parsed is None:
+                break
+            name, child_extent, child_size, is_dir, record_length = parsed
+            result.append((name, child_extent, child_size, is_dir))
+            offset += record_length
+        return result
+
+    def find(self, pathname: str) -> tuple[int, int, bool] | None:
+        if self._root is None:
+            return None
+        components = [part for part in pathname.replace("\\", "/").split("/") if part and part != "."]
+        current = self._root
+        for component in components:
+            if not current[2]:
+                return None
+            wanted = component.upper()
+            match = None
+            for name, extent, size, is_dir in self._entries(current[0], current[1]):
+                if name.upper() == wanted:
+                    match = (extent, size, is_dir)
+                    break
+            if match is None:
+                return None
+            current = match
+        return current
+
+    def read_file(self, pathname: str, max_bytes: int | None = None) -> bytes | None:
+        entry = self.find(pathname)
+        if entry is None or entry[2]:
+            return None
+        extent, size, _ = entry
+        if max_bytes is not None and size > max_bytes:
+            raise RomxError(f"ISO file {pathname} exceeds extraction limit")
+        return _read_at(self.path, extent * self.sector_size, size)
+
+
+def _sfo_text(raw: bytes) -> str:
+    return raw.split(b"\0", 1)[0].decode("utf-8", "replace").strip()
+
+
+def _parse_sfo(raw: bytes) -> dict[str, Any]:
+    if len(raw) < 20 or raw[:4] not in {b"\x00PSF", b"PSF\x00"}:
+        raise RomxError("invalid PARAM.SFO header")
+    key_offset, data_offset, count = struct.unpack_from("<III", raw, 8)
+    if count > 4096 or key_offset > len(raw) or data_offset > len(raw) or 20 + count * 16 > len(raw):
+        raise RomxError("invalid PARAM.SFO table bounds")
+    result: dict[str, Any] = {}
+    for index in range(count):
+        entry = 20 + index * 16
+        key_rel, data_fmt, data_len, data_max, data_rel = struct.unpack_from("<HHIII", raw, entry)
+        key_start = key_offset + key_rel
+        data_start = data_offset + data_rel
+        if key_start >= len(raw) or data_start > len(raw) or data_len > len(raw) - data_start:
+            raise RomxError("invalid PARAM.SFO entry bounds")
+        key_end = raw.find(b"\0", key_start)
+        if key_end < 0:
+            raise RomxError("unterminated PARAM.SFO key")
+        key = raw[key_start:key_end].decode("ascii", "replace")
+        value = raw[data_start:data_start + data_len]
+        if data_fmt in {0x0004, 0x0204}:  # UTF-8 / UTF-8S
+            result[key] = _sfo_text(value)
+        elif data_fmt in {0x0002, 0x0404}:  # integer or opaque numeric
+            result[key] = struct.unpack_from("<I", value.ljust(4, b"\0"), 0)[0]
+        else:
+            result[key] = value
+    return result
+
+
+def _clean_title(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    value = " ".join(value.replace("\0", " ").split())
+    return value[:512] or None
+
+
+def _embedded_psp_iso(path: Path) -> tuple[dict[str, Any], bytes | None]:
+    reader = _Iso9660Reader(path)
+    metadata: dict[str, Any] = {}
+    sfo = reader.read_file("PSP_GAME/PARAM.SFO", 1024 * 1024)
+    if sfo:
+        fields = _parse_sfo(sfo)
+        title = _clean_title(fields.get("TITLE"))
+        serial = _clean_title(fields.get("DISC_ID") or fields.get("TITLE_ID"))
+        if title:
+            metadata["name"] = title
+        if serial:
+            metadata["serial"] = serial.upper()
+        category = _clean_title(fields.get("CATEGORY"))
+        if category:
+            metadata["category"] = category
+        region = _clean_title(fields.get("REGION"))
+        if region:
+            metadata["region"] = [region]
+        for source, target in (("DISC_VERSION", "version"), ("PARENTAL_LEVEL", "parental_level")):
+            if source in fields and target in METADATA_FIELDS:
+                value = _clean_title(fields[source])
+                if value:
+                    metadata[target] = value
+    cover = None
+    for candidate in ("PSP_GAME/ICON0.PNG", "PSP_GAME/PIC1.PNG", "PSP_GAME/PIC0.PNG"):
+        image = reader.read_file(candidate, MAX_COVER_BYTES)
+        if image:
+            try:
+                _validate_png_bytes(image)
+            except RomxError:
+                continue
+            cover = image
+            break
+    return metadata, cover
+
+
+def _embedded_psp_pbp(path: Path) -> tuple[dict[str, Any], bytes | None]:
+    header = _read_at(path, 0, 40)
+    if len(header) < 40 or header[:4] != b"\x00PBP":
+        return {}, None
+    offsets = struct.unpack_from("<8I", header, 8)
+    file_size = path.stat().st_size
+    chunks: list[bytes] = []
+    for start, end in zip(offsets, offsets[1:] + (file_size,)):
+        if start > end or end > file_size:
+            return {}, None
+        chunks.append(_read_at(path, start, min(end - start, MAX_COVER_BYTES)))
+    metadata = {}
+    if chunks and chunks[0]:
+        try:
+            fields = _parse_sfo(chunks[0])
+            title = _clean_title(fields.get("TITLE"))
+            serial = _clean_title(fields.get("DISC_ID") or fields.get("TITLE_ID"))
+            if title:
+                metadata["name"] = title
+            if serial:
+                metadata["serial"] = serial.upper()
+        except RomxError:
+            pass
+    cover = None
+    for image in chunks[1:4]:
+        try:
+            _validate_png_bytes(image)
+            cover = image
+            break
+        except RomxError:
+            continue
+    return metadata, cover
+
+
+def _header_title(path: Path, payload_format: str) -> str | None:
+    lengths = {
+        "gb": (0x134, 16), "gbc": (0x134, 16), "gba": (0xA0, 12),
+        "nds": (0, 12), "n64": (0x20, 20), "z64": (0x20, 20), "v64": (0x20, 20),
+        "md": (0x120, 48), "gen": (0x120, 48), "smd": (0x120, 48),
+    }
+    if payload_format not in lengths:
+        return None
+    offset, size = lengths[payload_format]
+    raw = _read_at(path, offset, size)
+    if not raw:
+        return None
+    text = raw.decode("ascii", "ignore")
+    text = "".join(char if (char.isprintable() and char not in "\x00") else " " for char in text)
+    text = " ".join(text.split()).strip(" -_")
+    return text[:512] or None
+
+
+def extract_embedded_info(path: Path, payload_format: str) -> tuple[dict[str, Any], bytes | None]:
+    """Extract best-effort title/serial/artwork from the payload itself."""
+    metadata: dict[str, Any] = {}
+    cover = None
+    if payload_format == "iso":
+        try:
+            metadata, cover = _embedded_psp_iso(path)
+        except RomxError:
+            metadata, cover = {}, None
+    elif payload_format == "pbp":
+        metadata, cover = _embedded_psp_pbp(path)
+    title = _header_title(path, payload_format)
+    if title and "name" not in metadata:
+        metadata["name"] = title
+    return metadata, cover
+
+
+def infer_payload_format(path: Path) -> str:
+    suffix = path.suffix.lower().lstrip(".")
+    if suffix not in PAYLOAD_FORMATS:
+        raise RomxError(f"unsupported ROM extension: {path.suffix or '<none>'}")
+    return suffix
+
+
+def _merge_missing(base: dict[str, Any], extra: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(base)
+    for key, value in extra.items():
+        if key not in merged or merged[key] in (None, "", [], {}):
+            merged[key] = value
+    return merged
+
+
+def _dat_tokens(text: str) -> list[str]:
+    pattern = re.compile(r"\s+|\"(?:\\.|[^\"\\])*\"|[()]|[^\s()]+")
+    tokens: list[str] = []
+    for match in pattern.finditer(text):
+        token = match.group(0)
+        if token.isspace():
+            continue
+        if token.startswith('"'):
+            try:
+                token = json.loads(token)
+            except json.JSONDecodeError:
+                token = token[1:-1]
+        tokens.append(token)
+    return tokens
+
+
+def _dat_forms(tokens: list[str]) -> list[list[Any]]:
+    def parse(index: int) -> tuple[list[Any], int]:
+        if index >= len(tokens):
+            raise RomxError("invalid libretro DAT form")
+        form: list[Any] = []
+        if tokens[index] != "(":
+            form.append(tokens[index])
+            index += 1
+        if index >= len(tokens) or tokens[index] != "(":
+            raise RomxError("invalid libretro DAT form")
+        index += 1
+        while index < len(tokens) and tokens[index] != ")":
+            if tokens[index] == "(" or (index + 1 < len(tokens) and tokens[index + 1] == "("):
+                child, index = parse(index)
+                form.append(child)
+            else:
+                form.append(tokens[index])
+                index += 1
+        if index >= len(tokens):
+            raise RomxError("unterminated libretro DAT form")
+        return form, index + 1
+    forms: list[list[Any]] = []
+    index = 0
+    while index < len(tokens):
+        if tokens[index] != "(" and (index + 1 >= len(tokens) or tokens[index + 1] != "("):
+            index += 1
+            continue
+        form, index = parse(index)
+        forms.append(form)
+    return forms
+
+
+def _dat_fields(form: list[Any]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    index = 1
+    while index < len(form):
+        item = form[index]
+        if isinstance(item, list) and item:
+            key = str(item[0]).lower()
+            result[key] = item[1] if len(item) == 2 and not isinstance(item[1], list) else item[1:]
+            index += 1
+            continue
+        if index + 1 < len(form) and not isinstance(form[index + 1], list):
+            result[str(item).lower()] = form[index + 1]
+            index += 2
+        else:
+            index += 1
+    return result
+
+
+def _canonical_serial(value: Any) -> str:
+    return re.sub(r"[^A-Z0-9]", "", str(value).upper())
+
+
+def _libretro_records(text: str) -> list[dict[str, Any]]:
+    records: list[dict[str, Any]] = []
+    for form in _dat_forms(_dat_tokens(text)):
+        if not form or str(form[0]).lower() != "game":
+            continue
+        fields = _dat_fields(form)
+        rom = fields.get("rom")
+        if isinstance(rom, list) and rom and isinstance(rom[0], list):
+            rom_fields = _dat_fields(["rom", *rom])
+        elif isinstance(rom, list):
+            rom_fields = _dat_fields(["rom", *rom])
+        else:
+            rom_fields = {}
+        record: dict[str, Any] = {}
+        for key in ("name", "description", "developer", "publisher", "genre", "region", "serial"):
+            value = fields.get(key)
+            if value is not None and not isinstance(value, list):
+                record[key] = value
+        for key in ("serial", "crc", "md5", "sha1"):
+            if key in rom_fields and not isinstance(rom_fields[key], list):
+                record[key] = rom_fields[key]
+        if "serial" not in record and fields.get("serial"):
+            record["serial"] = fields["serial"]
+        records.append(record)
+    return records
+
+
+def _fetch_text(url: str, cache_dir: Path | None = None, timeout: float = 20.0) -> str:
+    cache_path = None
+    if cache_dir:
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        cache_path = cache_dir / (hashlib.sha256(url.encode()).hexdigest() + ".dat")
+        if cache_path.is_file():
+            return cache_path.read_text(encoding="utf-8")
+    request = urllib.request.Request(url, headers={"User-Agent": "romx-tools/0.1.1"})
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        data = response.read(64 * 1024 * 1024)
+    text = data.decode("utf-8")
+    if cache_path:
+        cache_path.write_text(text, encoding="utf-8")
+    return text
+
+
+def libretro_lookup_result(
+    platform: str,
+    metadata: dict[str, Any],
+    dat_url: str | None = None,
+    cache_dir: Path | None = None,
+    *,
+    payload_format: str | None = None,
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Return ``(record, method)`` using the database's configured key field."""
+    url = dat_url or libretro_dat_url(platform, payload_format)
+    if not url:
+        return None, None
+    try:
+        records = _libretro_records(_fetch_text(url, cache_dir))
+    except (OSError, UnicodeError, RomxError, urllib.error.URLError):
+        return None, None
+    mode = libretro_match_mode(platform, payload_format)
+    if mode == "serial":
+        serial = _canonical_serial(metadata.get("serial")) if metadata.get("serial") else ""
+        for record in records:
+            if serial and record.get("serial") and _canonical_serial(record["serial"]) == serial:
+                return record, "serial"
+    elif mode == "crc32":
+        wanted_crc = str(metadata.get("crc32", "")).lower()
+        for record in records:
+            if wanted_crc and str(record.get("crc", "")).lower() == wanted_crc:
+                return record, "crc32"
+    return None, None
+
+
+def libretro_lookup(
+    platform: str,
+    metadata: dict[str, Any],
+    dat_url: str | None = None,
+    cache_dir: Path | None = None,
+    *,
+    payload_format: str | None = None,
+) -> dict[str, Any] | None:
+    """Look up a record while preserving the historical record-only API."""
+    record, _ = libretro_lookup_result(platform, metadata, dat_url, cache_dir, payload_format=payload_format)
+    return record
+
+
+def _thumbnail_filename(name: str) -> str:
+    return re.sub(r'[&*/:<>?\\|\"]', "_", name).strip() or "untitled"
+
+
+def download_libretro_thumbnail(platform: str, name: str, cover_set: str = "Named_Boxarts", cache_dir: Path | None = None) -> bytes | None:
+    playlist = LIBRETRO_PLAYLISTS.get(platform)
+    if not playlist or not name:
+        return None
+    candidates = [name]
+    if " (" in name:
+        candidates.append(name.split(" (", 1)[0])
+    for candidate in candidates:
+        safe = _thumbnail_filename(candidate) + ".png"
+        url = "/".join((LIBRETRO_THUMBNAIL_BASE.rstrip("/"), urllib.parse.quote(playlist, safe=""), urllib.parse.quote(cover_set, safe=""), urllib.parse.quote(safe, safe="")))
+        cache_path = None
+        if cache_dir:
+            cache_path = cache_dir / playlist / cover_set / safe
+            if cache_path.is_file():
+                try:
+                    data = cache_path.read_bytes()
+                    _validate_png_bytes(data)
+                    return data
+                except (OSError, RomxError):
+                    pass
+        try:
+            request = urllib.request.Request(url, headers={"User-Agent": "romx-tools/0.1.1"})
+            with urllib.request.urlopen(request, timeout=20) as response:
+                data = response.read(MAX_COVER_BYTES + 1)
+            if len(data) > MAX_COVER_BYTES:
+                continue
+            _validate_png_bytes(data)
+            if cache_path:
+                cache_path.parent.mkdir(parents=True, exist_ok=True)
+                cache_path.write_bytes(data)
+            return data
+        except (OSError, RomxError, urllib.error.URLError):
+            continue
+    return None
+
+
 def _json_bytes(
     metadata_path: Path,
-    rom_bytes: bytes,
+    rom_bytes: bytes | str,
     crc32_override: str | None = None,
     cover_bytes: bytes | None = None,
 ) -> bytes:
     raw = metadata_path.read_bytes()
     value = _parse_json(raw, "metadata JSON")
     _validate_metadata(value, require_crc=False)
-    value["crc32"] = normalize_crc32(crc32_override) if crc32_override is not None else crc32(rom_bytes)
+    computed_crc = rom_bytes if isinstance(rom_bytes, str) else crc32(rom_bytes)
+    value["schema_version"] = DEFAULT_SCHEMA_VERSION
+    value["crc32"] = normalize_crc32(crc32_override) if crc32_override is not None else normalize_crc32(computed_crc)
     if "origin_crc32" in value:
-        value["origin_crc32"] = crc32(rom_bytes)
+        value["origin_crc32"] = normalize_crc32(computed_crc)
     if cover_bytes is not None:
         cover = {"mime_type": "image/png"}
         dimensions = _png_dimensions(cover_bytes)
@@ -389,6 +957,19 @@ def _json_bytes(
     return json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 
+def _metadata_json_bytes(value: dict[str, Any], rom_crc: str, cover_bytes: bytes | None = None) -> bytes:
+    value = dict(value)
+    value["schema_version"] = DEFAULT_SCHEMA_VERSION
+    value["crc32"] = normalize_crc32(value.get("crc32", rom_crc))
+    if "origin_crc32" in value:
+        value["origin_crc32"] = normalize_crc32(rom_crc)
+    if cover_bytes is not None:
+        width, height = _png_dimensions(cover_bytes)
+        value["cover"] = {"mime_type": "image/png", "width": width, "height": height}
+    _validate_metadata(value)
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+
+
 def pack(
     rom_path: Path,
     metadata_path: Path | None,
@@ -397,38 +978,112 @@ def pack(
     crc32_override: str | None = None,
     cover_size: tuple[int, int] | None = None,
     body_sha256_enabled: bool = False,
+    *,
+    online: bool = False,
+    database_url: str | None = None,
+    libretro_cache: Path | None = None,
+    cover_set: str = "Named_Boxarts",
 ) -> None:
-    rom = rom_path.read_bytes()
-    if not rom:
+    payload_format = infer_payload_format(rom_path)
+    rom_size = rom_path.stat().st_size
+    if not rom_size:
         raise RomxError("ROM payload must not be empty")
+    rom_crc = _crc32_path(rom_path)
+    embedded_metadata, embedded_cover = extract_embedded_info(rom_path, payload_format)
+    platform = _platform_for(payload_format)
+    value: dict[str, Any] = {
+        "schema_version": DEFAULT_SCHEMA_VERSION,
+        "name": rom_path.stem,
+        "platform": platform,
+        "payload_format": payload_format,
+    }
+    explicit: dict[str, Any] = {}
+    if metadata_path is not None:
+        explicit_value = _parse_json(metadata_path.read_bytes(), "metadata JSON")
+        _validate_metadata(explicit_value, require_crc=False)
+        explicit = explicit_value
+    online_name: str | None = None
+    online_record: dict[str, Any] | None = None
+    # Embedded fields are authoritative over an online lookup; explicit JSON
+    # supplied by the caller is authoritative over both.
+    if online:
+        lookup_metadata = dict(embedded_metadata)
+        lookup_metadata.update({key: item for key, item in explicit.items() if key not in {"schema_version", "crc32"}})
+        lookup_metadata["crc32"] = rom_crc
+        online_record, _ = libretro_lookup_result(
+            str(explicit.get("platform", platform)), lookup_metadata, database_url, libretro_cache,
+            payload_format=payload_format,
+        )
+        record = online_record
+        if record:
+            mapped: dict[str, Any] = {}
+            for source, target in (("name", "name"), ("description", "description"),
+                                   ("developer", "developer"), ("publisher", "publisher"),
+                                   ("genre", "genre"), ("region", "region"), ("serial", "serial")):
+                if record.get(source) is not None:
+                    mapped[target] = record[source]
+            if "genre" in mapped and isinstance(mapped["genre"], str):
+                mapped["genre"] = [mapped["genre"]]
+            if "region" in mapped and isinstance(mapped["region"], str):
+                mapped["region"] = [mapped["region"]]
+            if isinstance(mapped.get("name"), str):
+                online_name = mapped["name"]
+            value.update(mapped)
+    value.update(embedded_metadata)
+    value.update(explicit)
+    value["platform"] = value.get("platform") or platform
+    value["payload_format"] = payload_format
     cover = b""
     if cover_path is not None:
         cover = normalize_cover_path(cover_path, cover_size)
-        if not cover.startswith(PNG_SIGNATURE):
-            raise RomxError("cover is not a PNG file")
-    metadata = (
-        _json_bytes(metadata_path, rom, crc32_override, cover or None)
-        if metadata_path is not None else b""
-    )
+    elif embedded_cover is not None:
+        cover = normalize_cover_bytes(embedded_cover, cover_size)
+    elif online:
+        for thumbnail_name in (str(value["name"]) if value.get("name") else "", online_name or ""):
+            if not thumbnail_name:
+                continue
+            thumbnail = download_libretro_thumbnail(platform, thumbnail_name, cover_set, libretro_cache)
+            if thumbnail:
+                cover = normalize_cover_bytes(thumbnail, cover_size)
+                break
+    if crc32_override is not None:
+        value["crc32"] = normalize_crc32(crc32_override)
+    else:
+        value["crc32"] = rom_crc
+    metadata = _metadata_json_bytes(value, rom_crc, cover or None)
 
     rom_offset = 0
-    metadata_offset = len(rom) if metadata else 0
+    metadata_offset = rom_size if metadata else 0
     cover_offset = metadata_offset + len(metadata) if cover else 0
-    body = rom + metadata + cover
     flags = FLAG_BODY_SHA256 if body_sha256_enabled else 0
     if metadata:
         flags |= FLAG_METADATA
     if cover:
         flags |= FLAG_COVER
-    footer = FOOTER.pack(
-        MAGIC, WIRE_VERSION,
-        rom_offset, len(rom),
-        metadata_offset, len(metadata),
-        cover_offset, len(cover),
-        ZERO_SHA256, flags, FOOTER_SIZE, sha256(body) if body_sha256_enabled else ZERO_SHA256,
-    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_bytes(body + footer)
+    body_hash = hashlib.sha256() if body_sha256_enabled else None
+    with rom_path.open("rb") as source, output_path.open("wb") as destination:
+        while True:
+            block = source.read(1024 * 1024)
+            if not block:
+                break
+            destination.write(block)
+            if body_hash:
+                body_hash.update(block)
+        for block in (metadata, cover):
+            if block:
+                destination.write(block)
+                if body_hash:
+                    body_hash.update(block)
+        footer = FOOTER.pack(
+            MAGIC, WIRE_VERSION,
+            rom_offset, rom_size,
+            metadata_offset, len(metadata),
+            cover_offset, len(cover),
+            ZERO_SHA256, flags, FOOTER_SIZE,
+            body_hash.digest() if body_hash else ZERO_SHA256,
+        )
+        destination.write(footer)
 
 
 def _read_footer(path: Path) -> tuple[bytes, dict[str, Any]]:
@@ -575,10 +1230,21 @@ def _platform_for(payload_format: str, playlist_name: str = "") -> str:
     if payload_format in {"gb", "gbc"}:
         return payload_format
     name = playlist_name.lower()
-    for marker, platform in (("gbc", "gbc"), ("gba", "gba"), ("3ds", "3ds"), ("nds", "nds"), ("snes", "snes"), ("genesis", "genesis"), ("gb", "gb"), ("nes", "nes")):
+    for marker, platform in (("playstation portable", "psp"), ("psp", "psp"), ("playstation 2", "ps2"),
+                             ("playstation", "ps1"), ("gbc", "gbc"), ("gba", "gba"),
+                             ("3ds", "3ds"), ("nds", "nds"), ("super nintendo", "snes"),
+                             ("snes", "snes"), ("genesis", "genesis"), ("game boy", "gb"),
+                             ("nes", "nes")):
         if marker in name:
             return platform
-    return {"gb": "gb", "gbc": "gbc", "gba": "gba", "nes": "nes", "fds": "nes", "sfc": "snes", "smc": "snes", "nds": "nds", "3ds": "3ds", "cci": "3ds", "cia": "3ds", "md": "genesis", "gen": "genesis", "smd": "genesis", "bin": "genesis"}.get(payload_format, "gb")
+    return {
+        "gb": "gb", "gbc": "gbc", "gba": "gba", "nes": "nes", "unf": "nes", "unif": "nes",
+        "fds": "fds", "sfc": "snes", "smc": "snes", "nds": "nds", "3ds": "3ds", "cci": "3ds",
+        "cxi": "3ds", "app": "3ds", "md": "genesis", "gen": "genesis", "smd": "genesis",
+        "32x": "genesis32x", "sms": "sms", "gg": "gamegear", "pce": "pce", "iso": "psp",
+        "cso": "psp", "pbp": "psp", "chd": "psp", "elf": "psp", "prx": "psp", "cdi": "dreamcast",
+        "gcm": "gamecube", "wbfs": "wii", "rvz": "wii", "wia": "wii", "wad": "wii", "zso": "ps2",
+    }.get(payload_format, "gb")
 
 
 def _png_dimensions(data: bytes) -> tuple[int, int] | None:
@@ -680,6 +1346,9 @@ def import_lpl(
     crc32_override: str | None = None,
     cover_size: tuple[int, int] | None = None,
     body_sha256_enabled: bool = False,
+    online: bool = False,
+    database_url: str | None = None,
+    libretro_cache: Path | None = None,
 ) -> int:
     """Import one LPL into sequential ROMX files.
 
@@ -688,7 +1357,7 @@ def import_lpl(
     part from the LPL and look up each item by basename, which is useful when
     ROMs or thumbnails have been moved to a flat directory. When no roots are
     supplied, absolute ROM paths in the LPL are used directly and a standard
-    `playlists/../thumbnails/<playlist>/<cover_set>` tree is inferred. Useful
+    `playlists/../thumbnails/<playlist>/<cover_set>` tree is inferred.
     Only database-compatible game information is written to metadata; LPL-only
     fields remain conversion state and paths remain outside metadata.
     """
@@ -713,14 +1382,11 @@ def import_lpl(
             if skip_missing:
                 continue
             raise RomxError(f"ROM not found for LPL item {index}: {rom_path}")
-        payload_format = rom_path.suffix.lower().lstrip(".")
-        if payload_format not in {"gb", "gbc", "gba", "nes", "fds", "sfc", "smc", "nds", "3ds", "cci", "cia", "md", "gen", "smd", "bin"}:
-            raise RomxError(f"unsupported ROM extension in LPL item {index}: {rom_path.suffix}")
-        rom_bytes = rom_path.read_bytes()
+        payload_format = infer_payload_format(rom_path)
         if payload_format in {"gb", "gbc"}:
-            payload_format = classify_gb_payload(rom_bytes, payload_format)
+            payload_format = classify_gb_payload(_read_at(rom_path, 0, 0x144), payload_format)
         name = item.get("label") or rom_path.stem
-        metadata: dict[str, Any] = {"schema_version": "0.1.0", "name": str(name), "platform": _platform_for(payload_format, playlist_name), "payload_format": payload_format}
+        metadata: dict[str, Any] = {"schema_version": DEFAULT_SCHEMA_VERSION, "name": str(name), "platform": _platform_for(payload_format, playlist_name), "payload_format": payload_format}
         identity = _lpl_item_identity(item.get("crc32"))
         if identity and identity[0] == "serial":
             metadata["serial"] = identity[1]
@@ -741,7 +1407,11 @@ def import_lpl(
             item_crc_override = crc32_override
             if item_crc_override is None and identity and identity[0] == "crc32":
                 item_crc_override = identity[1]
-            pack(rom_path, metadata_file, output_path, cover_path, item_crc_override, cover_size, body_sha256_enabled)
+            pack(
+                rom_path, metadata_file, output_path, cover_path, item_crc_override,
+                cover_size, body_sha256_enabled, online=online,
+                database_url=database_url, libretro_cache=libretro_cache, cover_set=cover_set,
+            )
         finally:
             metadata_file.unlink(missing_ok=True)
         imported += 1
@@ -804,15 +1474,20 @@ def export_lpl(
             (actual_cover_dir / f"{_safe_filename(name)}.png").write_bytes(cover)
         prefix = lpl_rom_prefix or f"/roms/{playlist}"
         lpl_item_path = str(Path(prefix) / filename).replace("\\", "/")
-        lookup_crc = metadata.get("crc32")
-        if not isinstance(lookup_crc, str):
-            lookup_crc = crc32(rom)
+        serial = metadata.get("serial")
+        if isinstance(serial, str) and serial:
+            identity = f"{serial}|serial"
         else:
-            try:
-                lookup_crc = normalize_crc32(lookup_crc)
-            except RomxError:
+            lookup_crc = metadata.get("crc32")
+            if not isinstance(lookup_crc, str):
                 lookup_crc = crc32(rom)
-        items.append({"path": lpl_item_path, "label": name, "core_path": "DETECT", "core_name": "DETECT", "crc32": f"{lookup_crc}|crc", "db_name": actual_lpl.name})
+            else:
+                try:
+                    lookup_crc = normalize_crc32(lookup_crc)
+                except RomxError:
+                    lookup_crc = crc32(rom)
+            identity = f"{lookup_crc}|crc"
+        items.append({"path": lpl_item_path, "label": name, "core_path": "DETECT", "core_name": "DETECT", "crc32": identity, "db_name": actual_lpl.name})
     actual_lpl.parent.mkdir(parents=True, exist_ok=True)
     actual_lpl.write_text(json.dumps({"version": "1.5", "default_core_path": "DETECT", "default_core_name": "DETECT", "label_display_mode": 0, "right_thumbnail_mode": 0, "left_thumbnail_mode": 0, "thumbnail_match_mode": 0, "sort_mode": 0, "items": items}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return len(items)
@@ -832,7 +1507,7 @@ def _add_body_sha_option(parser: argparse.ArgumentParser) -> None:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="ROMX 0.1.0 packer, inspector, verifier, extractor, LPL importer, and LPL exporter")
+    parser = argparse.ArgumentParser(description="ROMX 0.1.1 packer, inspector, verifier, extractor, LPL importer, and LPL exporter")
     sub = parser.add_subparsers(dest="command", required=True)
     pack_parser = sub.add_parser("pack", help="create a ROMX file")
     pack_parser.add_argument("rom", type=Path)
@@ -841,6 +1516,10 @@ def main() -> int:
     pack_parser.add_argument("--cover", type=Path, help="PNG/JPEG/WebP/GIF/BMP cover")
     pack_parser.add_argument("--crc32", help="override metadata CRC32 lookup key (8 hexadecimal characters)")
     pack_parser.add_argument("--cover-size", help="normalize cover to WIDTHxHEIGHT PNG")
+    pack_parser.add_argument("--online", action="store_true", help="query the libretro DAT and thumbnails when metadata/cover are missing")
+    pack_parser.add_argument("--database-url", help="override the libretro DAT URL")
+    pack_parser.add_argument("--libretro-cache", type=Path, help="cache directory for libretro DAT and thumbnails")
+    pack_parser.add_argument("--cover-set", default="Named_Boxarts", help="libretro thumbnail set (default: Named_Boxarts)")
     _add_body_sha_option(pack_parser)
     for name in ("inspect", "verify"):
         command = sub.add_parser(name, help=f"{name} a ROMX file")
@@ -859,6 +1538,9 @@ def main() -> int:
     import_parser.add_argument("--skip-missing", action="store_true", help="skip LPL items whose ROM is missing")
     import_parser.add_argument("--crc32", help="override metadata CRC32 lookup key for every imported ROM")
     import_parser.add_argument("--cover-size", help="normalize imported covers to WIDTHxHEIGHT PNG")
+    import_parser.add_argument("--online", action="store_true", help="query the libretro DAT and thumbnails when metadata/cover are missing")
+    import_parser.add_argument("--database-url", help="override the libretro DAT URL")
+    import_parser.add_argument("--libretro-cache", type=Path, help="cache directory for libretro DAT and thumbnails")
     _add_body_sha_option(import_parser)
     export_parser = sub.add_parser("export-lpl", help="extract a ROMX folder to ROMs, thumbnails, and an LPL")
     export_parser.add_argument("romx_dir", type=Path)
@@ -872,7 +1554,12 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.command == "pack":
-            pack(args.rom, args.metadata, args.output, args.cover, args.crc32, parse_cover_size(args.cover_size), args.body_sha256)
+            pack(
+                args.rom, args.metadata, args.output, args.cover, args.crc32,
+                parse_cover_size(args.cover_size), args.body_sha256,
+                online=args.online, database_url=args.database_url,
+                libretro_cache=args.libretro_cache, cover_set=args.cover_set,
+            )
         elif args.command == "inspect":
             print(json.dumps(inspect(args.romx), ensure_ascii=False, indent=2))
         elif args.command == "verify":
@@ -882,7 +1569,12 @@ def main() -> int:
         elif args.command == "extract":
             extract(args.romx, args.output)
         elif args.command == "import-lpl":
-            count = import_lpl(args.lpl, args.output, args.rom_root, args.cover_root, args.force_rom_dir, args.force_cover_dir, args.cover_set, args.skip_missing, args.crc32, parse_cover_size(args.cover_size), args.body_sha256)
+            count = import_lpl(
+                args.lpl, args.output, args.rom_root, args.cover_root, args.force_rom_dir,
+                args.force_cover_dir, args.cover_set, args.skip_missing, args.crc32,
+                parse_cover_size(args.cover_size), args.body_sha256, args.online,
+                args.database_url, args.libretro_cache,
+            )
             print(f"imported {count} ROMX files into {args.output}")
         else:
             count = export_lpl(args.romx_dir, args.output_root, args.playlist_name, args.lpl_path, args.rom_dir, args.cover_dir, args.lpl_rom_prefix, args.cover_set)
