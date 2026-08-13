@@ -11,7 +11,7 @@
       "enum": ["gb", "gbc", "gba", "nes", "snes", "nds", "3ds", "genesis"]
     },
     "payload_format": {
-      "enum": ["gb", "gbc", "gba", "nes", "fds", "sfc", "smc", "nds", "3ds", "cci", "cia", "md", "gen", "smd", "bin"]
+      "enum": ["gb", "gbc", "gba", "nes", "fds", "sfc", "smc", "nds", "3ds", "cci", "md", "gen", "smd"]
     },
     "serial": { "type": "string", "maxLength": 128 },
     "developer": { "type": "string", "maxLength": 256 },

@@ -14,11 +14,9 @@
 | `nds` | `nds` | `.nds` | Nintendo DS Header 和 logo |
 | `3ds` | `3ds` | `.3ds` | `0x100` 偏移处的 NCSD 结构 |
 | `3ds` | `cci` | `.cci` | NCSD 容器，与 `.3ds` 同类 |
-| `3ds` | `cia` | `.cia` | CIA section/header 结构 |
 | `genesis` | `md` | `.md` | `0x100` 偏移处通常为 `SEGA` |
 | `genesis` | `gen` | `.gen` | 与 `.md` 同类格式 |
 | `genesis` | `smd` | `.smd` | 交错格式，通常带 copier header |
-| `genesis` | `bin` | `.bin` | 有歧义，必须检查 Header |
 
 这些内容只是识别辅助。读取器不能仅凭有歧义的扩展名判断平台。可信 ROM Header 优先于 metadata 和文件名提示。
 
@@ -32,4 +30,7 @@ Game Boy payload 应检查 ROM Header 偏移 `0x143` 的 CGB flag：
 
 `0x80` ROM 如果缺少或没有有效的 `payload_format`，必须报告为分类不明确。
 
-ROMX 容器扩展名是在原 ROM 扩展名后追加 `x`：`.gba` 变为 `.gbax`，`.sfc` 变为 `.sfcx`，`.cia` 变为 `.ciax`。
+ROMX 容器扩展名是在原 ROM 扩展名后追加 `x`：`.gba` 变为 `.gbax`，`.sfc` 变为 `.sfcx`，`.cci` 变为 `.ccix`。
+
+`.cia` 与存在歧义的 Mega Drive `.bin` 不属于 ROMX 0.1.x payload profile。
+它们保留到 ROMX 0.2.0，待加载与识别规则明确后再定义对应 profile。

@@ -130,6 +130,11 @@ def libretro_match_mode(platform: str, payload_format: str | None = None) -> str
 def libretro_dat_url(platform: str, payload_format: str | None = None) -> str | None:
     return LIBRETRO_PROFILE_DAT_URLS.get((platform, payload_format)) or LIBRETRO_DAT_URLS.get(platform)
 
+BASE_PLATFORMS = {"gb", "gbc", "gba", "nes", "snes", "nds", "3ds", "genesis"}
+BASE_PAYLOAD_FORMATS = {
+    "gb", "gbc", "gba", "nes", "fds", "sfc", "smc", "nds", "3ds", "cci",
+    "md", "gen", "smd",
+}
 PLATFORMS = {
     "gb", "gbc", "gba", "nes", "fds", "snes", "nds", "n64", "psp",
     "genesis", "genesis32x", "sms", "gamegear", "pce", "ps1", "pcecd",
@@ -410,9 +415,11 @@ def _validate_metadata(value: Any, *, require_crc: bool = True) -> dict[str, Any
     if value["schema_version"] not in SUPPORTED_SCHEMA_VERSIONS:
         raise RomxError("metadata schema_version must be '0.1.0' or '0.1.1'")
     _validate_text(value.get("name"), "name", 512, required=True)
-    if value.get("platform") not in PLATFORMS:
+    allowed_platforms = BASE_PLATFORMS if value["schema_version"] == "0.1.0" else PLATFORMS
+    allowed_payload_formats = BASE_PAYLOAD_FORMATS if value["schema_version"] == "0.1.0" else PAYLOAD_FORMATS
+    if value.get("platform") not in allowed_platforms:
         raise RomxError(f"unsupported platform: {value.get('platform')!r}")
-    if value.get("payload_format") not in PAYLOAD_FORMATS:
+    if value.get("payload_format") not in allowed_payload_formats:
         raise RomxError(f"unsupported payload_format: {value.get('payload_format')!r}")
     if "crc32" in value:
         normalize_crc32(value["crc32"])

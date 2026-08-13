@@ -17,8 +17,9 @@ The container extension is the original ROM extension plus `x`: `.gba` becomes `
 
 This repository defines the stable and frozen **ROMX 0.1.0 binary format**.
 The `main` branch additionally documents the ROMX 0.1.1 platform and payload
-profiles; these profiles do not change the 0.1.0 bytes or footer. A separate
-0.1.1 metadata schema only admits the newly registered platform and payload IDs.
+profiles; these profiles do not change the 0.1.0 bytes or footer. The 0.1.1
+metadata schema is backward-compatible: it accepts both 0.1.0 metadata and the
+newly registered 0.1.1 platform/payload IDs.
 
 ## Documentation
 
@@ -81,7 +82,8 @@ ROMX 0.1.0 的 metadata `crc32` 使用与 RetroArch 兼容的 CRC-32/ISO-HDLC，
 
 本仓库定义稳定、冻结的 **ROMX 0.1.0 二进制格式**。`main` 分支同时记录
 ROMX 0.1.1 平台与 Payload profile；这些 profile 不改变 0.1.0 的字节或 footer。
-独立的 0.1.1 metadata Schema 只扩展新增的平台与 Payload ID。
+0.1.1 metadata Schema 向后兼容，既接受 0.1.0 metadata，也接受 0.1.1 新增的
+平台与 Payload ID。
 
 中文文档：
 

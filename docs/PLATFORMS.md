@@ -14,11 +14,9 @@
 | `nds` | `nds` | `.nds` | Nintendo DS header and logo |
 | `3ds` | `3ds` | `.3ds` | NCSD structure at offset `0x100` |
 | `3ds` | `cci` | `.cci` | NCSD container, same family as `.3ds` |
-| `3ds` | `cia` | `.cia` | CIA section/header structure |
 | `genesis` | `md` | `.md` | Usually `SEGA` at offset `0x100` |
 | `genesis` | `gen` | `.gen` | Same format family as `.md` |
 | `genesis` | `smd` | `.smd` | Interleaved format, often with copier header |
-| `genesis` | `bin` | `.bin` | Ambiguous; header inspection is required |
 
 These hints are identification aids only. A reader must not claim a platform from an ambiguous extension alone. A trusted ROM header takes priority over metadata and filename hints.
 
@@ -32,4 +30,8 @@ For Game Boy payloads, inspect the CGB flag at ROM header offset `0x143`:
 
 A missing or invalid `payload_format` makes a `0x80` ROM ambiguous and should be reported to the user.
 
-The ROMX container extension is the original ROM extension plus `x`: `.gba` becomes `.gbax`, `.sfc` becomes `.sfcx`, and `.cia` becomes `.ciax`.
+The ROMX container extension is the original ROM extension plus `x`: `.gba` becomes `.gbax`, `.sfc` becomes `.sfcx`, and `.cci` becomes `.ccix`.
+
+`.cia` and ambiguous Mega Drive `.bin` are not ROMX 0.1.x payload profiles.
+They are reserved for explicit ROMX 0.2.0 profiles after their loading and
+identification rules are defined.

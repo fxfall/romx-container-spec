@@ -125,16 +125,17 @@ footer 或启用的 body SHA 失败必须拒绝容器。无效的可选 metadata
 
 ## 7. 版本与 schema 演进
 
-ROMX 0.1.0 是冻结格式。兼容性修改只能新增 conformance fixture，或澄清不改变字节
-语义的文字。修改 footer 布局、字段语义或任何有效性规则，必须提升格式版本（例如
-ROMX 0.2.0）；ROMX 0.1.0 读取器必须拒绝新版本。
+ROMX 0.1.0 二进制格式已经冻结。二进制兼容性修改只能新增 conformance fixture，
+或澄清不改变字节语义的文字。修改 footer 布局、footer 字段语义、区域语义或二进制
+有效性规则，必须提升格式版本（例如 ROMX 0.2.0）；ROMX 0.1.0 reader 必须拒绝新版本。
 
 metadata schema 与二进制容器独立演进：`schema_version` 标识 metadata 合约，footer
-wire `version` 标识二进制容器。ROMX 0.1.0 metadata schema 使用
-`schema_version: "0.1.0"`。只改变 metadata 且保持向后兼容时，可以发布新的 schema
-文档和 schema 版本而不改变 footer 字节；不理解该 schema 的读取器应将 metadata
-视为不支持/无效，但仍可提取 payload。涉及 footer 字节、区域语义或二进制有效性的
-变化不能只靠 metadata schema 版本承载，必须使用新的 ROMX 格式版本。
+wire `version` 标识二进制容器。基础注册表使用 `schema_version: "0.1.0"`，其向后兼容
+扩展使用 `0.1.1`。0.1.1 schema 同时接受两个版本；支持 0.1.1 的 reader 必须验证并
+接受所有有效的 0.1.0 metadata。writer 写入自己采用的注册表版本，读取或复制未修改
+metadata 时不得改写版本。不理解后续 schema 的 reader 可以把 metadata 视为不支持/
+无效，但仍可提取 payload。涉及 footer 字节、区域语义或二进制有效性的变化不能只靠
+metadata schema 版本承载，必须使用新的 ROMX 格式版本。
 
 ## 8. 冻结一致性夹具
 

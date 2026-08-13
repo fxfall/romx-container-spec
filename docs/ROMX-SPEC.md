@@ -155,20 +155,23 @@ as a cache key.
 
 ## 7. Version and schema evolution
 
-ROMX 0.1.0 is a frozen format. A compatibility change may only add conformance
-fixtures or clarify wording without changing byte semantics. Changing the
-footer layout, any field's meaning, or a validity rule requires a new format
-version (for example, ROMX 0.2.0); a ROMX 0.1.0 reader must reject that version.
+The ROMX 0.1.0 binary format is frozen. A binary compatibility change may only
+add conformance fixtures or clarify wording without changing byte semantics.
+Changing the footer layout, a footer field's meaning, region semantics, or a
+binary validity rule requires a new format version (for example, ROMX 0.2.0);
+a ROMX 0.1.0 reader must reject that version.
 
 The metadata schema evolves independently from the container. Its
-`schema_version` identifies the metadata contract while the footer wire `version`
-identifies the binary container. The ROMX 0.1.0 metadata schema uses
-`schema_version: "0.1.0"`. A backward-compatible metadata-only change
-may publish a new schema document and schema version without changing footer
-bytes; readers that do not understand that schema must treat metadata as
-unsupported/invalid but may still extract the payload. A change that affects
-footer bytes, region semantics, or binary validity cannot be carried by a
-metadata schema version and must use a new ROMX format version.
+`schema_version` identifies the metadata contract while the footer wire
+`version` identifies the binary container. The baseline registry uses
+`schema_version: "0.1.0"`; its backward-compatible extension uses `0.1.1`.
+The 0.1.1 schema accepts both versions, and a 0.1.1-aware reader MUST validate
+and accept every valid 0.1.0 metadata document. Writers emit the version of the
+registry they use and MUST NOT relabel unchanged metadata merely while reading
+or copying it. A reader that does not understand a later schema may treat the
+metadata as unsupported/invalid but may still extract the payload. A change
+that affects footer bytes, region semantics, or binary validity cannot be
+carried by a metadata schema version and must use a new ROMX format version.
 
 ## 8. Frozen conformance fixtures
 

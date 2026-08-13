@@ -1,4 +1,4 @@
-# ROMX Metadata 0.1.0
+# ROMX Metadata 0.1.x
 
 Metadata 是内嵌在 ROMX 容器中的可选 UTF-8 JSON object。它由 footer 定位，不使用外部路径。规范字段约束以 `schema/romx-metadata.schema.json` 为准。
 
@@ -8,13 +8,17 @@ ROMX 使用 `name` 作为规范显示名称，因为前端将游戏记录保存�
 
 | 字段 | 类型 | 含义 |
 |---|---|---|
-| `schema_version` | string | 必须为 `0.1.0` |
+| `schema_version` | string | 基础注册表使用 `0.1.0`，扩展注册表使用 `0.1.1` |
 | `name` | string | 规范游戏显示名称 |
 | `platform` | string | `PLATFORMS.md` 中的平台 ID |
 | `payload_format` | string | 提取后的 ROM 格式，不含点号 |
 | `crc32` | string | 有效的数据库匹配 CRC32，小写 8 位十六进制 |
 
 `crc32` 只是数据库匹配辅助值，不代表 payload 完整性。写入器默认根据 payload 自动生成它。只有调用方明确要求匹配某个数据库已发布的身份时，才允许手动覆盖。`origin_crc32` 与它独立且可选；存在时必须是根据实际 payload 字节计算出的 CRC32。它默认不生成，也不会被手动覆盖值替代。
+
+0.1.1 schema 向后兼容，同时接受两种 `schema_version`。0.1.1 writer 写入
+`0.1.1`；未修改的 0.1.0 metadata 继续保留 `0.1.0`。reader 必须根据
+`schema_version` 选择规则，不能只因读取或复制 metadata 就改写其版本。
 
 CRC32 与 RetroArch 完全兼容，使用 CRC-32/ISO-HDLC 参数：多项式
 `0x04C11DB7`（反射实现 `0xEDB88320`）、初值 `0xFFFFFFFF`、输入输出反射、最终异或
