@@ -1,5 +1,10 @@
 # ROMX
 
+> [!IMPORTANT]
+> `main` is the ROMX 0.2.0 development branch. ROMX 0.1.x is retained as a
+> historical conformance and regression-test baseline; 0.2.0 development is
+> not constrained by full backward compatibility with 0.1.x.
+
 ROMX is an open ROM container specification for emulator frontends, game libraries, and archival workflows.
 
 A ROMX file contains:
@@ -15,14 +20,14 @@ SHA-256; only the optional container-wide body SHA-256 is stored there.
 
 The container extension is the original ROM extension plus `x`: `.gba` becomes `.gbax`, `.nes` becomes `.nesx`, and `.nds` becomes `.ndsx`.
 
-This repository defines the stable and frozen **ROMX 0.1.0 binary format**.
-The `main` branch additionally documents the ROMX 0.1.1 platform and payload
-profiles; these profiles do not change the 0.1.0 bytes or footer. The 0.1.1
-metadata schema is backward-compatible: it accepts both 0.1.0 metadata and the
-newly registered 0.1.1 platform/payload IDs.
+The `0.1.0` and `0.1.1` branches preserve the historical ROMX 0.1.x standards.
+The `main` branch develops ROMX 0.2.0 and may change the footer, region model,
+metadata contract, and validity rules. Any resulting 0.2.0 wire format must use
+a distinct wire version and must not masquerade as a 0.1.x container.
 
 ## Documentation
 
+- [ROMX 0.2.0 development policy](docs/ROMX-0.2.0-DEVELOPMENT.md)
 - [Binary specification](docs/ROMX-SPEC.md)
 - [Metadata reference](docs/METADATA.md)
 - [Platforms and payload formats](docs/PLATFORMS.md)
@@ -37,6 +42,9 @@ newly registered 0.1.1 platform/payload IDs.
 ## Reference implementation
 
 The [Python reference implementation](tools/romx.py) demonstrates how to create, inspect, verify, and extract a ROMX file. Install [Pillow](requirements.txt) when converting JPG, JPEG, WebP, GIF, or BMP covers, or when resizing any cover.
+
+On `main`, this script remains a ROMX 0.1.x historical test/reference tool
+until the 0.2.0 wire format is specified and implemented.
 
 ```bash
 pip install -r requirements.txt
@@ -66,6 +74,9 @@ The script is an implementation guide and validation aid, not a production packe
 
 ## 中文介绍
 
+> **注意：** `main` 是 ROMX 0.2.0 开发分支。ROMX 0.1.x 仅作为历史一致性与
+> 回归测试基线保留；0.2.0 的开发不以完全兼容 0.1.x 为约束。
+
 ROMX 是面向模拟器前端、游戏库和归档工具的开放 ROM 容器规范。
 
 ROMX 文件包含：
@@ -80,13 +91,13 @@ ROMX 0.1.0 的 metadata `crc32` 使用与 RetroArch 兼容的 CRC-32/ISO-HDLC，
 
 容器扩展名是在原 ROM 扩展名后追加 `x`：`.gba` 变为 `.gbax`，`.nes` 变为 `.nesx`，`.nds` 变为 `.ndsx`。
 
-本仓库定义稳定、冻结的 **ROMX 0.1.0 二进制格式**。`main` 分支同时记录
-ROMX 0.1.1 平台与 Payload profile；这些 profile 不改变 0.1.0 的字节或 footer。
-0.1.1 metadata Schema 向后兼容，既接受 0.1.0 metadata，也接受 0.1.1 新增的
-平台与 Payload ID。
+`0.1.0` 与 `0.1.1` 分支保存历史 ROMX 0.1.x 标准。`main` 开发 ROMX 0.2.0，
+可以修改 footer、区域模型、metadata 合约与有效性规则。最终 0.2.0 wire format
+必须使用独立 wire version，不得伪装成 0.1.x 容器。
 
 中文文档：
 
+- [ROMX 0.2.0 开发政策](docs/ROMX-0.2.0-DEVELOPMENT_CN.md)
 - [二进制规范（中文）](docs/ROMX-SPEC_CN.md)
 - [Metadata 参数（中文）](docs/METADATA_CN.md)
 - [平台与 Payload 格式（中文）](docs/PLATFORMS_CN.md)
@@ -97,6 +108,9 @@ ROMX 0.1.1 平台与 Payload profile；这些 profile 不改变 0.1.0 的字节�
 - [ROMX 0.1.1 libretro 匹配表](docs/LIBRETRO-MATCHING-0.1.1_CN.md)
 
 参考脚本也支持：
+
+在 `main` 上，当前脚本仍是 ROMX 0.1.x 历史测试/参考工具；只有 0.2.0 wire format
+正式定义并实现后，才能作为 0.2.0 writer 使用。
 
 ```bash
 # metadata 和 cover 可省略；脚本会尝试从 ROM Header/容器读取。
