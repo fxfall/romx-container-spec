@@ -1,7 +1,0 @@
-{
-  "schema_version": "0.1.0",
-  "name": "Example Game",
-  "platform": "gba",
-  "payload_format": "gba",
-  "crc32": "1234abcd"
-}

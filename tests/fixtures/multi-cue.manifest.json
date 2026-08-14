@@ -1,0 +1,80 @@
+{
+  "file": "multi-cue.romx",
+  "file_sha256": "876d287f2fc489c4cbd231393fa520f7140d9ab0b844e48b6d90f467ad59c699",
+  "file_size": 5959,
+  "footer": {
+    "cover_size": 0,
+    "footer_crc32": "b1a81dde",
+    "footer_size": 128,
+    "immutable_hash_algorithm": 0,
+    "immutable_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "launch_format_id": 2,
+    "metadata_size": 0,
+    "mutable_capacity": 0,
+    "payload_size": 4231,
+    "platform_id": 48,
+    "wire_version": 2
+  },
+  "regions": {
+    "cover": {
+      "offset": 0,
+      "size": 0
+    },
+    "footer": {
+      "offset": 5831,
+      "size": 128
+    },
+    "metadata": {
+      "offset": 0,
+      "size": 0
+    },
+    "mutable": {
+      "offset": 0,
+      "size": 0
+    },
+    "payload": {
+      "offset": 0,
+      "size": 4231
+    },
+    "ridx": {
+      "offset": 4231,
+      "size": 1600
+    }
+  },
+  "ridx": {
+    "entries": [
+      {
+        "crc32": "b34caf65",
+        "data_offset": 0,
+        "data_size": 135,
+        "entrypoint": true,
+        "flags": 3,
+        "format_id": 32,
+        "path": "disc/game.cue"
+      },
+      {
+        "crc32": "c3b82b6c",
+        "data_offset": 135,
+        "data_size": 2560,
+        "entrypoint": false,
+        "flags": 2,
+        "format_id": 48,
+        "path": "disc/track01.bin"
+      },
+      {
+        "crc32": "eb4aa615",
+        "data_offset": 2695,
+        "data_size": 1536,
+        "entrypoint": false,
+        "flags": 2,
+        "format_id": 48,
+        "path": "disc/track02.bin"
+      }
+    ],
+    "entry_count": 3,
+    "entry_size": 512,
+    "index_crc32": "87e0727a",
+    "index_version": 1
+  },
+  "status": "valid"
+}

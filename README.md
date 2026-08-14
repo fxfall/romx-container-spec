@@ -1,126 +1,114 @@
 # ROMX
 
-> [!IMPORTANT]
-> `main` is the ROMX 0.2.0 development branch. ROMX 0.1.x is retained as a
-> historical conformance and regression-test baseline; 0.2.0 development is
-> not constrained by full backward compatibility with 0.1.x.
+ROMX is an open container specification for emulator frontends, game
+libraries, and archival workflows. This repository defines ROMX 0.2.0 only.
 
-ROMX is an open ROM container specification for emulator frontends, game libraries, and archival workflows.
+The specification covers the serialized container format: regions, binary
+registries, validation, integrity, and mutable-object commit and failure
+semantics. Library APIs, VFS adapters, temporary-file policy, database access,
+emulator selection, and user interfaces belong to consumer implementations.
 
-A ROMX file contains:
+A `.romx` file can contain:
 
-- an unmodified, directly loadable ROM payload;
-- embedded UTF-8 metadata JSON;
+- an uncompressed concatenation of one or more unmodified game files;
+- a binary RIDX virtual-file index and launch entrypoint;
+- optional strict UTF-8 metadata JSON;
 - an optional embedded PNG cover;
-- a fixed 128-byte footer with offsets, lengths, and an optional body SHA-256.
+- an optional fixed-capacity mutable region for saves, cheats, statistics, and
+  private data;
+- a compact fixed 128-byte footer with region sizes and optional immutable
+  SHA-256.
 
-ROMX 0.1.0 uses RetroArch-compatible CRC-32/ISO-HDLC for metadata `crc32`,
-serialized as lower-case eight-digit hexadecimal. The footer stores no payload
-SHA-256; only the optional container-wide body SHA-256 is stored there.
+Payload entries are never compressed. Mutable objects occupy indexed,
+fixed-capacity extents and contain opaque save, cheat, statistics, or private
+bytes. Explicit updates overwrite only the selected extent and its directory
+entry, without rewriting the immutable payload or moving the footer. When
+immutable SHA-256 is enabled, mutable updates do not require recalculating it.
 
-The container extension is the original ROM extension plus `x`: `.gba` becomes `.gbax`, `.nes` becomes `.nesx`, and `.nds` becomes `.ndsx`.
+The entrypoint payload begins at file offset zero with no ROMX header or
+prefix. For a damaged footer, this preserves the possibility of separately
+detecting and exposing an exact native single-file payload in an explicitly
+unverified salvage mode.
 
-The `0.1.0` and `0.1.1` branches preserve the historical ROMX 0.1.x standards.
-The `main` branch develops ROMX 0.2.0 and may change the footer, region model,
-metadata contract, and validity rules. Any resulting 0.2.0 wire format must use
-a distinct wire version and must not masquerade as a 0.1.x container.
+ROMX 0.2.0 uses one container extension: `.romx`. The footer declares the
+platform and launch model; RIDX declares every embedded file's format, virtual
+path, byte range, entrypoint status, and optional CRC32.
+
+The 0.2.0 format is under active development and is not frozen.
+
+## Legal and copyright position
+
+ROMX is a content-neutral container specification. It defines how bytes and
+descriptive data are organized, validated, and accessed; it does not grant or
+imply permission to copy, decrypt, modify, possess, embed, upload, or distribute
+the content stored in a ROMX file.
+
+A technically valid ROMX container may contain material protected by copyright,
+trademark, contract, or other rights. Format conformance, successful conversion,
+a matching checksum or serial, and ownership of an original copy do not by
+themselves establish that a particular use is lawful. Game data, firmware,
+BIOS files, encryption keys, cover artwork, metadata, manuals, and other
+third-party material may each have separate rights and restrictions.
+
+Users and distributors are solely responsible for obtaining any required
+authorization and for complying with applicable laws, licenses, platform terms,
+and technological-protection rules. Exceptions for backup, preservation,
+research, and interoperability vary by jurisdiction and may be narrower than
+expected. ROMX must not be represented as a way to legitimize unauthorized
+copies or to evade access controls.
+
+The repository's [MIT License](LICENSE) applies only to project-authored
+specification text, schemas, examples, and software distributed by this
+repository. It grants no license to third-party content placed in a ROMX
+container and no rights to third-party names, logos, artwork, databases, or
+trademarks. This project does not provide ROMs, disc images, firmware, BIOS
+files, encryption keys, or proprietary artwork. Nothing in this repository is
+legal advice.
 
 ## Documentation
 
-- [ROMX 0.2.0 development policy](docs/ROMX-0.2.0-DEVELOPMENT.md)
-- [Binary specification](docs/ROMX-SPEC.md)
+- [Container specification](docs/ROMX-SPEC.md)
+- [Platform and launch profiles](docs/PLATFORMS.md)
 - [Metadata reference](docs/METADATA.md)
-- [Platforms and payload formats](docs/PLATFORMS.md)
-- [ROMX 0.1.1 platform and payload profiles](docs/PLATFORMS-0.1.1.md)
-- [Container structure](docs/FILE-STRUCTURE.md)
+- [Development policy](docs/DEVELOPMENT.md)
 - [Metadata JSON Schema](schema/romx-metadata.schema.json)
-- [ROMX 0.1.1 metadata JSON Schema](schema/romx-metadata-0.1.1.schema.json)
-- [Conformance fixtures](docs/CONFORMANCE.md)
-- [ROMX 0.1.1 frontend integration profile](docs/FRONTEND-0.1.1.md)
-- [ROMX 0.1.1 libretro matching map](docs/LIBRETRO-MATCHING-0.1.1.md)
-
-## Reference implementation
-
-The [Python reference implementation](tools/romx.py) demonstrates how to create, inspect, verify, and extract a ROMX file. Install [Pillow](requirements.txt) when converting JPG, JPEG, WebP, GIF, or BMP covers, or when resizing any cover.
-
-On `main`, this script remains a ROMX 0.1.x historical test/reference tool
-until the 0.2.0 wire format is specified and implemented.
-
-```bash
-pip install -r requirements.txt
-python3 tools/romx.py pack game.gba metadata.json -o game.gbax --cover cover.png
-# Metadata and cover are optional; supported ROM headers/containers are inspected automatically.
-python3 tools/romx.py pack game.gba -o game.gbax
-# Optional database identity override; without it CRC32 is regenerated from game.gba.
-python3 tools/romx.py pack game.gba metadata.json -o game.gbax --crc32 0123abcd
-# Convert any supported image and resize it to an exact resolution.
-python3 tools/romx.py pack game.gba metadata.json -o game.gbax --cover cover.webp --cover-size 320x320
-# Optional libretro DAT/thumbnail lookup; embedded ROM information remains preferred.
-python3 tools/romx.py pack game.iso -o game.isox --online --libretro-cache ~/.cache/romx/libretro
-# Optional container-wide body SHA-256; disabled by default for conversion speed.
-python3 tools/romx.py pack game.gba metadata.json -o game.gbax --body-sha256
-python3 tools/romx.py inspect game.gbax
-python3 tools/romx.py verify game.gbax
-python3 tools/romx.py extract game.gbax extracted/
-python3 tools/romx.py import-lpl playlist.lpl -o romx-out --rom-root /path/to/rom-root --cover-root /path/to/thumbnails
-# The same optional body hash switch is available for import-lpl.
-python3 tools/romx.py import-lpl playlist.lpl -o romx-out --body-sha256
-python3 tools/romx.py export-lpl romx-out -o retroarch-out
-```
-
-The script is an implementation guide and validation aid, not a production packer.
-
-`import-lpl` creates sequential names such as `000001.gbcx`, matching each LPL item to a ROM and (when available) `Named_Snaps/<rom-stem>.png`. It regenerates each metadata CRC32 from the original ROM by default; use `--crc32 0123abcd` to apply an explicit lookup override. PNG is preserved byte-for-byte by default; non-PNG covers are converted to PNG, and `--cover-size 320x320` converts/resizes every cover. When metadata or cover is omitted, the packer extracts supported header/container fields; PSP ISO/PBP extraction reads `PSP_GAME/PARAM.SFO` and prefers its `DISC_ID` serial and `ICON0.PNG`. `--online` uses the fixed libretro database key for the selected platform (for example, serial for PSP and CRC32 for GBA), then downloads a thumbnail by the database-assigned name. A modified ISO may have a different CRC32 while retaining the same serial. With no `--rom-root` or `--cover-root`, real absolute ROM paths and RetroArch virtual `/roms/...` paths are resolved from the LPL location, and the sibling thumbnail tree is inferred. Only database-compatible game information is written to ROMX metadata; LPL-only fields such as paths, core selection, playlist settings, and playback state are handled transiently by the converter. Use `--rom-dir` and `--cover-dir` to force flat lookup directories. `export-lpl` writes the default RetroArch layout: `playlists/`, `roms/<playlist>/`, and `thumbnails/<playlist>/Named_Snaps/`; use `--lpl-path`, `--rom-dir`, and `--cover-dir` to override those destinations.
+- [Metadata example](examples/metadata.example.json)
 
 ## 中文介绍
 
-> **注意：** `main` 是 ROMX 0.2.0 开发分支。ROMX 0.1.x 仅作为历史一致性与
-> 回归测试基线保留；0.2.0 的开发不以完全兼容 0.1.x 为约束。
+ROMX 是面向模拟器前端、游戏库与归档流程的开放容器规范。本仓库只定义 ROMX
+0.2.0。
 
-ROMX 是面向模拟器前端、游戏库和归档工具的开放 ROM 容器规范。
+规范只约束容器的序列化格式，包括区域、二进制注册表、验证、完整性，以及 mutable
+object 的提交与失败语义。Library API、VFS adapter、临时文件策略、数据库访问、模拟器选择
+和用户界面属于消费端实现，不属于容器规范。
 
-ROMX 文件包含：
+一个 `.romx` 文件可以包含：
 
-- 未修改、可直接加载的标准 ROM；
-- 内嵌的 UTF-8 metadata JSON；
+- 一个或多个未修改游戏文件的不压缩拼接；
+- RIDX 二进制虚拟文件索引与启动入口；
+- 可选的严格 UTF-8 metadata JSON；
 - 可选的内嵌 PNG 封面；
-- 固定 128 字节 footer，记录偏移、长度和可选的 body SHA-256。
+- 用于存档、金手指、统计与私有数据的可选固定容量 mutable region；
+- 精简的固定 128 字节 footer，保存区域大小与可选 immutable SHA-256。
 
-ROMX 0.1.0 的 metadata `crc32` 使用与 RetroArch 兼容的 CRC-32/ISO-HDLC，序列化为
-8 位小写十六进制。Footer 不保存 payload SHA-256，只保存可选的容器 body SHA-256。
+Payload entry 永远不压缩。Mutable object 使用带索引的固定容量 extent，内部保存
+opaque 的存档、金手指、统计或私有数据。显式更新只覆盖所选 extent 及其 directory
+entry，无需重写 immutable payload，也不会移动 footer。启用 immutable SHA-256 后，
+mutable 更新不需要重新计算它。
 
-容器扩展名是在原 ROM 扩展名后追加 `x`：`.gba` 变为 `.gbax`，`.nes` 变为 `.nesx`，`.nds` 变为 `.ndsx`。
+Entrypoint payload 从文件偏移零开始，前面没有 ROMX header 或 prefix。Footer 损坏
+时，这一规则保留了在明确标记为未验证的 salvage mode 中单独识别并暴露准确原生
+单文件 payload 的可能性。
 
-`0.1.0` 与 `0.1.1` 分支保存历史 ROMX 0.1.x 标准。`main` 开发 ROMX 0.2.0，
-可以修改 footer、区域模型、metadata 合约与有效性规则。最终 0.2.0 wire format
-必须使用独立 wire version，不得伪装成 0.1.x 容器。
+ROMX 0.2.0 只使用 `.romx` 扩展名。Footer 声明平台与启动模型；RIDX 声明每个内嵌
+文件的格式、虚拟路径、字节范围、启动入口状态与可选 CRC32。
+
+0.2.0 格式仍在开发中，尚未冻结。
 
 中文文档：
 
-- [ROMX 0.2.0 开发政策](docs/ROMX-0.2.0-DEVELOPMENT_CN.md)
-- [二进制规范（中文）](docs/ROMX-SPEC_CN.md)
-- [Metadata 参数（中文）](docs/METADATA_CN.md)
-- [平台与 Payload 格式（中文）](docs/PLATFORMS_CN.md)
-- [ROMX 0.1.1 平台与 Payload profile](docs/PLATFORMS-0.1.1_CN.md)
-- [文件结构（中文）](docs/FILE-STRUCTURE_CN.md)
-- [一致性冻结夹具（中文）](docs/CONFORMANCE_CN.md)
-- [ROMX 0.1.1 前端接入 profile](docs/FRONTEND-0.1.1_CN.md)
-- [ROMX 0.1.1 libretro 匹配表](docs/LIBRETRO-MATCHING-0.1.1_CN.md)
-
-参考脚本也支持：
-
-在 `main` 上，当前脚本仍是 ROMX 0.1.x 历史测试/参考工具；只有 0.2.0 wire format
-正式定义并实现后，才能作为 0.2.0 writer 使用。
-
-```bash
-# metadata 和 cover 可省略；脚本会尝试从 ROM Header/容器读取。
-python3 tools/romx.py pack game.gba -o game.gbax
-# 可选接入 libretro DAT 与缩略图；脚本按平台固定使用 serial 或 CRC32。
-python3 tools/romx.py pack game.iso -o game.isox --online --libretro-cache ~/.cache/romx/libretro
-python3 tools/romx.py import-lpl playlist.lpl -o romx-out --rom-root /path/to/rom-root --cover-root /path/to/thumbnails
-# 可选的容器 body SHA-256；默认关闭以减少转换时的重复读取。
-python3 tools/romx.py import-lpl playlist.lpl -o romx-out --body-sha256
-python3 tools/romx.py export-lpl romx-out -o retroarch-out
-```
-
-`import-lpl` 会生成 `000001.gbcx` 形式的连续 ROMX 文件，并按 ROM 文件名匹配 `Named_Snaps/<rom-stem>.png`。PNG 默认逐字节保留，其他支持的图片会转换为 PNG，`--cover-size` 可统一调整尺寸；生成的 `cover` 元数据来自实际内嵌的标准化 PNG。省略 metadata/cover 时会尝试提取 ROM 自带信息；PSP ISO/PBP 会读取 `PARAM.SFO` 的标题、`DISC_ID` 和 `ICON0.PNG`。`--online` 会按平台固定选择 libretro 数据库的 serial 或 CRC32 主键，再按数据库名称查询缩略图；PSP 使用 serial，GBA 等卡带格式使用 CRC32，修改过的 ISO CRC 不匹配不影响 serial 匹配。可用 `--rom-dir` 和 `--cover-dir` 强制指定平铺目录。`export-lpl` 默认生成 RetroArch 的 `playlists/`、`roms/<playlist>/` 和 `thumbnails/<playlist>/Named_Snaps/` 结构，也可以用 `--lpl-path`、`--rom-dir`、`--cover-dir` 指定输出位置。
+- [容器规范](docs/ROMX-SPEC_CN.md)
+- [平台与启动 Profile](docs/PLATFORMS_CN.md)
+- [Metadata 参数](docs/METADATA_CN.md)
+- [开发政策](docs/DEVELOPMENT_CN.md)

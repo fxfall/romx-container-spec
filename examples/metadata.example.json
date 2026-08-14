@@ -1,0 +1,10 @@
+{
+  "schema_version": "0.2.0",
+  "name": "Example Multi-Disc Game",
+  "serial": "EXAMPLE-00001",
+  "region": ["USA"],
+  "language": "English",
+  "users": 1,
+  "media": "CD-ROM",
+  "description": "Example metadata for a multi-file ROMX container."
+}

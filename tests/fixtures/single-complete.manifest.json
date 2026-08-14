@@ -1,0 +1,62 @@
+{
+  "file": "single-complete.romx",
+  "file_sha256": "a94bcbae6d56e8c24937ceb3b5d563a42cb703f43231664311e41fc94ba1bd3f",
+  "file_size": 41088,
+  "footer": {
+    "cover_size": 70,
+    "footer_crc32": "e8f733b8",
+    "footer_size": 128,
+    "immutable_hash_algorithm": 1,
+    "immutable_sha256": "2ee3e3787710e395a8eee6b76a5150b365c7eed2df171d252fc0bc2c918519b1",
+    "launch_format_id": 1,
+    "metadata_size": 68,
+    "mutable_capacity": 12288,
+    "payload_size": 24592,
+    "platform_id": 4,
+    "wire_version": 2
+  },
+  "regions": {
+    "cover": {
+      "offset": 25236,
+      "size": 70
+    },
+    "footer": {
+      "offset": 40960,
+      "size": 128
+    },
+    "metadata": {
+      "offset": 25168,
+      "size": 68
+    },
+    "mutable": {
+      "offset": 28672,
+      "size": 12288
+    },
+    "payload": {
+      "offset": 0,
+      "size": 24592
+    },
+    "ridx": {
+      "offset": 24592,
+      "size": 576
+    }
+  },
+  "ridx": {
+    "entries": [
+      {
+        "crc32": "e5224cf4",
+        "data_offset": 0,
+        "data_size": 24592,
+        "entrypoint": true,
+        "flags": 3,
+        "format_id": 4,
+        "path": "game.nes"
+      }
+    ],
+    "entry_count": 1,
+    "entry_size": 512,
+    "index_crc32": "4ff89fd2",
+    "index_version": 1
+  },
+  "status": "valid"
+}
