@@ -434,8 +434,9 @@ header (4096) | fixed object directory | object extents and free space
 
 The mutable region is not an append-only log and contains no snapshot history.
 An update overwrites only the selected object's assigned extent and directory
-slot. The bytes of an object are opaque to ROMX. ROMX does not define save,
-cheat, statistics, or application-private file formats.
+slot. Object bytes are opaque unless they opt in to one of the interoperable
+profiles in Sections 6.4.1 and 6.4.2. ROMX does not reinterpret a core's native
+save bytes, cheat syntax, or producer-private format.
 
 Sparse-file behavior is not part of ROMX. Writers must not depend on holes
 remaining sparse after copying or downloading a container.
@@ -501,7 +502,9 @@ Duplicate identities or overlapping extents quarantine every implicated slot;
 unrelated valid objects remain usable.
 
 `data_size` may be zero; its CRC32 is then `00000000`. ROMX applies no codec,
-compression, or byte transformation to mutable object data.
+compression, encryption, or transformation to mutable object data. The
+uncompressed bundle profile below only frames multiple original files; their
+bytes are stored verbatim.
 
 ### 6.3 Entry states
 
@@ -536,13 +539,133 @@ entry.
 Save states are explicitly outside ROMX 0.2.0 and must not be stored in any
 namespace, including `PRIVATE`.
 
+### 6.4.1 Uncompressed SAVE/CHEAT bundle profile
+
+A `SAVE` or `CHEAT` object may contain an interoperable uncompressed mutable
+bundle. The bundle collects a finite set of regular files without changing
+their bytes. The object key identifies the consumer-selected destination root;
+each bundled path is relative to that root. The common key `libretro` denotes
+the active Libretro frontend save or cheat root, but the physical host path is
+still frontend policy.
+
+The bundle begins with one 64-byte header:
+
+| Offset | Size | Type | Field | Requirement |
+|---:|---:|---|---|---|
+| `0x00` | 4 | bytes | `magic` | ASCII `RMBL` |
+| `0x04` | 2 | uint16 | `bundle_version` | Exactly `1` |
+| `0x06` | 2 | uint16 | `header_size` | Exactly `64` |
+| `0x08` | 2 | uint16 | `namespace` | Exactly the outer `SAVE` or `CHEAT` namespace |
+| `0x0A` | 2 | uint16 | `flags` | Zero |
+| `0x0C` | 4 | uint32 | `entry_size` | Exactly `64` |
+| `0x10` | 4 | uint32 | `entry_count` | Number of bundled regular files |
+| `0x14` | 4 | uint32 | `reserved` | Zero |
+| `0x18` | 8 | uint64 | `directory_offset` | Exactly `64` |
+| `0x20` | 8 | uint64 | `path_table_offset` | Exactly `64 + entry_count * 64` |
+| `0x28` | 8 | uint64 | `data_offset` | First data position; `align_up(path_table_end, 64)` |
+| `0x30` | 8 | uint64 | `bundle_size` | Exactly the outer object's `data_size` |
+| `0x38` | 4 | uint32 | `header_crc32` | CRC32 of the complete 64-byte header |
+| `0x3C` | 4 | uint32 | `reserved` | Zero |
+
+For `header_crc32`, bytes `0x38..0x3B` are treated as zero. The fixed
+directory immediately follows the header. Each 64-byte entry has this form:
+
+| Offset | Size | Type | Field | Requirement |
+|---:|---:|---|---|---|
+| `0x00` | 8 | uint64 | `path_offset` | Absolute bundle offset of the path bytes |
+| `0x08` | 4 | uint32 | `path_size` | UTF-8 byte length, 1–1024 |
+| `0x0C` | 4 | uint32 | `flags` | Zero; only regular files exist in version 1 |
+| `0x10` | 8 | uint64 | `data_offset` | Absolute bundle offset; 64-byte aligned |
+| `0x18` | 8 | uint64 | `data_size` | Verbatim file length; zero is permitted |
+| `0x20` | 4 | uint32 | `data_crc32` | CRC32 of exactly the file bytes |
+| `0x24` | 28 | bytes | `reserved` | All zero |
+
+Paths use the RIDX path normalization rules and additionally have a maximum of
+1024 UTF-8 bytes. They are not NUL-terminated on disk. Entries are sorted by
+strict unsigned UTF-8 byte order. Paths must be unique both byte-for-byte and
+after ASCII case folding. The path table packs paths in directory order with
+no separators or gaps. Its zero padding ends at `data_offset`.
+
+File data appears in directory order. Each `data_offset` is exactly
+`align_up(previous_file_end, 64)`; every alignment gap, including the gap
+after the last file, is zero. `bundle_size` is exactly the aligned end of the
+last file. An empty bundle is valid and is exactly its 64-byte header.
+Arithmetic is checked and ranges must not overlap.
+
+A conforming writer accepts only explicitly selected regular files and stores
+their bytes without compression, archive metadata, permissions, timestamps,
+symlinks, hard links, devices, or directory entries. A reader validates the
+outer object CRC32, complete bundle layout, normalized paths, zero padding, and
+every `data_crc32` before extraction. It rejects absolute paths, dot
+components, traversal, backslashes, embedded NUL, duplicate destinations, and
+any extraction that traverses a symlink.
+
+Restore is transactional at the paths named by the bundle: extract to a new
+staging location on the destination filesystem, validate all bytes, then
+atomically replace only the listed per-content directory or files. A consumer
+must never replace a shared frontend save or cheat root. If any listed local
+destination already exists, automatic first-use restore is skipped and
+conflict handling requires an explicit user operation. A valid empty bundle
+is distinct from an absent object and intentionally contains no files.
+
+### 6.4.2 Strict STATS JSON profile
+
+A `STATS` object with key `default` may contain a strict UTF-8 JSON object
+whose maximum size is 16384 bytes. It has no BOM, duplicate keys, unknown
+keys, floating-point values, comments, or trailing non-whitespace data. The
+required members are:
+
+| Key | Type | Requirement |
+|---|---|---|
+| `schema` | string | Exactly `romx.stats` |
+| `version` | integer | Exactly `1` |
+
+The following members are optional. Every integer is in
+`0..9007199254740991`, so it is exactly representable by interoperable JSON
+implementations.
+
+| Key | Type | Meaning and constraints |
+|---|---|---|
+| `play_time_seconds` | integer | Accumulated foreground play time |
+| `launch_count` | integer | Count of successful launches |
+| `first_played_unix_seconds` | integer | Earliest known UTC Unix time |
+| `last_played_unix_seconds` | integer | Latest known UTC Unix time; not earlier than `first_played_unix_seconds` |
+| `favorite` | boolean | User favorite state |
+| `completed` | boolean | User completion state |
+| `completion_percent` | integer | Inclusive range 0–100 |
+| `achievements` | object | Aggregate achievement progress described below |
+
+The `achievements` object, when present, requires non-negative integer
+`unlocked` and `total`; `unlocked` must not exceed `total`. It may also
+contain `hardcore_unlocked`, which must not exceed `unlocked`. No other
+members are allowed. Provider credentials, access tokens, account identifiers,
+and complete provider-specific achievement records must not be stored in
+`STATS`; explicitly requested producer data belongs in `PRIVATE`.
+
+Writers emit compact JSON in the table order above, with `unlocked`,
+`total`, then `hardcore_unlocked` inside `achievements`. Readers accept
+other member ordering and JSON whitespace when the strict schema is otherwise
+valid.
+
+Play-time and launch-count synchronization uses a baseline plus session delta.
+Immediately before explicit write-back, a consumer re-reads the latest active
+`STATS` generation and adds only its local session delta. It uses the minimum
+known first-played time and maximum known last-played time. It must not replace
+a newer cumulative counter with a stale absolute snapshot. Favorite,
+completion, and achievement-summary conflict policy remains an explicit user
+or frontend decision.
+
 ### 6.5 Explicit operations and allocation
 
-ROMX defines no automatic restore, synchronization, or write-back event.
-Import, overwrite, write-back, and deletion occur only through an explicit
-consumer request. User-interface confirmation, local destination paths,
-conflict policy, and mapping to emulator memory or frontend directories are
-outside the container standard.
+The container layer does not itself trigger host-side restore,
+synchronization, or write-back. A consumer may implement the non-conflicting
+first-use restore policy defined by the SAVE/CHEAT bundle profile: it restores
+only when every listed destination is absent and otherwise skips the complete
+operation. Import that would overwrite local data, conflict resolution,
+write-back, and deletion require an explicit consumer request. There is no
+automatic write-back on close or exit. User-interface confirmation, physical
+host paths, and mapping to emulator memory or frontend directories are outside
+the container standard.
 
 Creation assigns an empty directory slot and one non-overlapping extent.
 Ordinary replacement must keep the existing `data_offset` and
@@ -598,18 +721,20 @@ directory-based saves and reserve useful capacity in each object extent.
 | Profile | Typical systems | Recommended capacity |
 |---|---|---:|
 | `compact` | Any platform where minimal container growth is preferred | 0 (no mutable region) |
-| `cartridge-detected` | GB/GBC/GBA, NES, SNES, MD, SMS, GG, PCE, N64 | `max(256 KiB, detected_save_capacity + 128 KiB + directory overhead)` |
-| `cartridge-unknown` | A cartridge whose save capacity cannot be identified | 1 MiB |
-| `cartridge-large` | Nintendo DS | `max(4 MiB, detected_save_capacity + 1 MiB + directory overhead)` |
-| `disc-card-small` | PS1, PCE CD, Sega CD, Saturn, Dreamcast | 2 MiB |
-| `arcade` | FBNeo/MAME NVRAM, configuration, cheats | 1 MiB |
+| `cartridge-detected` | GB/GBC/GBA, NES, SNES, MD, SMS, GG, PCE, N64 | `max(512 KiB, detected_save_capacity + 256 KiB + directory overhead)` |
+| `cartridge-unknown` | A cartridge whose save capacity cannot be identified | 1 MiB normally; 2 MiB for homebrew |
+| `cartridge-large` | Nintendo DS cartridge saves | `max(16 MiB, detected_save_capacity + 2 MiB + directory overhead)` |
+| `disc-card-small` | PS1, PCE CD, Sega CD, Saturn, Dreamcast | 2 MiB; select a larger profile for multi-card or VMU sets |
+| `arcade` | FBNeo/MAME NVRAM, configuration, cheats | 1 MiB normally; 4 MiB for a complete per-title set |
 | `disc-card-medium` | PlayStation 2 | 32 MiB |
-| `directory-save-large` | PSP, GameCube, Wii, Nintendo 3DS | 64 MiB, explicitly selected |
+| `directory-save-large` | PSP, GameCube, Wii, Nintendo 3DS, DSi/NAND/SD saves | 64 MiB for filtered per-title files; 128 MiB or larger only when explicitly selected from measured data |
 
-At least 128 KiB of a non-zero small-system capacity should remain available
-for cheat and statistics objects. When existing data is imported, allocated
-object capacities should include expected growth in addition to current byte
-sizes and directory overhead.
+SAVE, CHEAT, STATS, and PRIVATE objects have independent extents. At least
+128 KiB of a non-zero small-system capacity should remain unallocated for
+CHEAT and STATS extents; a producer must not allow SAVE growth to consume their
+reserved capacity. When existing data is imported, allocated object capacities
+should include expected growth in addition to current byte sizes and directory
+overhead.
 
 The compact profile is conforming and avoids multiplying the size of very
 small ROMs. The other profiles do not guarantee that every future save set

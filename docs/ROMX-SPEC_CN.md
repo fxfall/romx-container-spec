@@ -388,8 +388,9 @@ header (4096) | fixed object directory | object extents and free space
 ```
 
 Mutable region 不是 append-only log，也不保存 snapshot 历史。更新只原位覆盖所选
-object 已分配的 extent 和对应 directory slot。ROMX 将 object 字节视为 opaque data，
-不定义存档、金手指、统计数据或应用私有数据的具体文件格式。
+object 已分配的 extent 和对应 directory slot。除非采用 6.4.1 或 6.4.2 节的互操作
+profile，否则 ROMX 将 object 字节视为 opaque data。ROMX 不重新解释核心的原生
+存档字节、金手指语法或 producer 私有格式。
 
 稀疏文件行为不属于 ROMX。Writer 不得依赖容器被复制或下载后仍保留 hole 的稀疏
 属性。
@@ -452,7 +453,8 @@ Identity 重复或 extent 重叠时，所有涉及的 slot 都必须隔离；其
 仍然可用。
 
 `data_size` 可以为零，此时 CRC32 必须为 `00000000`。ROMX 不对 mutable object data
-应用 codec、压缩或任何字节转换。
+应用 codec、压缩、加密或任何字节转换。下述无压缩 bundle 只为多个原始文件增加
+边界描述，文件字节保持不变。
 
 ### 6.3 Entry state
 
@@ -483,11 +485,114 @@ Namespace 只描述 opaque bytes 的大类用途，不定义文件类型、schem
 ROMX 0.2.0 明确排除 save state；任何 namespace（包括 `PRIVATE`）都不得保存即时
 存档。
 
+### 6.4.1 无压缩 SAVE/CHEAT bundle profile
+
+`SAVE` 或 `CHEAT` object 可以保存可互操作的无压缩 mutable bundle。Bundle 将有限
+数量的普通文件组合在一起，但不改变文件字节。Object key 标识 consumer 选择的目标
+根目录；bundle 内每个 path 都相对于该根目录。通用 key `libretro` 表示当前 Libretro
+前端的 save 或 cheat 根，但实际主机路径仍由前端政策决定。
+
+Bundle 从一个 64 字节 header 开始：
+
+| Offset | Size | Type | Field | Requirement |
+|---:|---:|---|---|---|
+| `0x00` | 4 | bytes | `magic` | ASCII `RMBL` |
+| `0x04` | 2 | uint16 | `bundle_version` | 必须为 `1` |
+| `0x06` | 2 | uint16 | `header_size` | 必须为 `64` |
+| `0x08` | 2 | uint16 | `namespace` | 必须等于外层 `SAVE` 或 `CHEAT` namespace |
+| `0x0A` | 2 | uint16 | `flags` | 零 |
+| `0x0C` | 4 | uint32 | `entry_size` | 必须为 `64` |
+| `0x10` | 4 | uint32 | `entry_count` | bundle 内普通文件数量 |
+| `0x14` | 4 | uint32 | `reserved` | 零 |
+| `0x18` | 8 | uint64 | `directory_offset` | 必须为 `64` |
+| `0x20` | 8 | uint64 | `path_table_offset` | 必须为 `64 + entry_count * 64` |
+| `0x28` | 8 | uint64 | `data_offset` | 第一个 data 位置，必须为 `align_up(path_table_end, 64)` |
+| `0x30` | 8 | uint64 | `bundle_size` | 必须等于外层 object 的 `data_size` |
+| `0x38` | 4 | uint32 | `header_crc32` | 完整 64 字节 header 的 CRC32 |
+| `0x3C` | 4 | uint32 | `reserved` | 零 |
+
+计算 `header_crc32` 时，将 `0x38..0x3B` 视为零。固定 directory 紧接 header。
+每个 64 字节 entry 如下：
+
+| Offset | Size | Type | Field | Requirement |
+|---:|---:|---|---|---|
+| `0x00` | 8 | uint64 | `path_offset` | Path 字节在 bundle 内的绝对 offset |
+| `0x08` | 4 | uint32 | `path_size` | UTF-8 字节数，1–1024 |
+| `0x0C` | 4 | uint32 | `flags` | 零；version 1 只表示普通文件 |
+| `0x10` | 8 | uint64 | `data_offset` | Bundle 内绝对 offset，按 64 字节对齐 |
+| `0x18` | 8 | uint64 | `data_size` | 文件原始长度；允许为零 |
+| `0x20` | 4 | uint32 | `data_crc32` | 恰好文件字节的 CRC32 |
+| `0x24` | 28 | bytes | `reserved` | 全零 |
+
+Path 遵循 RIDX path 规范化规则，且最多为 1024 个 UTF-8 字节；磁盘中不以 NUL
+结尾。Entry 按 unsigned UTF-8 原始字节严格排序。Path 既不得逐字节重复，也不得在
+ASCII 大小写折叠后重复。Path table 按 directory 顺序紧密保存 path，不含分隔符或
+gap；之后以零填充到 `data_offset`。
+
+文件 data 按 directory 顺序排列。每个 `data_offset` 必须恰好等于
+`align_up(previous_file_end, 64)`。所有对齐 gap（包括最后一个文件之后）必须为零。
+`bundle_size` 必须恰好等于最后一个文件对齐后的结束位置。空 bundle 有效，且恰好
+由 64 字节 header 构成。所有算术必须经过溢出检查，range 不得重叠。
+
+符合规范的 writer 只接受用户明确选择的普通文件，按原字节保存，不写入压缩、
+archive metadata、权限、时间戳、symlink、hard link、device 或 directory entry。
+Reader 在释放前必须验证外层 object CRC32、完整 bundle 布局、规范化 path、零填充
+和每个 `data_crc32`。绝对路径、dot component、路径穿越、反斜杠、内嵌 NUL、
+重复目标及任何穿过 symlink 的释放路径都必须拒绝。
+
+恢复操作必须以 bundle 列出的 path 为事务边界：先在目标文件系统的新 staging 位置
+释放并验证全部字节，再只原子替换列出的每游戏目录或文件。Consumer 绝不能替换
+前端共享的整个 save/cheat 根。只要任一列出的本地目标已存在，首次自动恢复就必须
+跳过，冲突只能由用户显式操作处理。有效的空 bundle 与 object 不存在含义不同：
+它明确表示没有文件。
+
+### 6.4.2 严格 STATS JSON profile
+
+Key 为 `default` 的 `STATS` object 可以保存严格 UTF-8 JSON object，最大 16384
+字节。它不得含 BOM、重复 key、未知 key、浮点数、注释或尾随非空白数据。以下
+member 是必需的：
+
+| Key | Type | Requirement |
+|---|---|---|
+| `schema` | string | 必须为 `romx.stats` |
+| `version` | integer | 必须为 `1` |
+
+以下 member 可选。所有 integer 都必须位于 `0..9007199254740991`，从而可以被通用
+JSON 实现精确表示。
+
+| Key | Type | Meaning and constraints |
+|---|---|---|
+| `play_time_seconds` | integer | 累计前台游玩秒数 |
+| `launch_count` | integer | 成功启动次数 |
+| `first_played_unix_seconds` | integer | 已知最早 UTC Unix 时间 |
+| `last_played_unix_seconds` | integer | 已知最晚 UTC Unix 时间；不得早于 `first_played_unix_seconds` |
+| `favorite` | boolean | 用户收藏状态 |
+| `completed` | boolean | 用户通关状态 |
+| `completion_percent` | integer | 闭区间 0–100 |
+| `achievements` | object | 下述成就汇总进度 |
+
+`achievements` object 存在时，必须包含非负 integer `unlocked` 与 `total`，且
+`unlocked` 不得大于 `total`。它还可以包含 `hardcore_unlocked`，其值不得大于
+`unlocked`。不允许其他 member。`STATS` 不得保存 provider 凭据、access token、
+账号标识或完整的 provider 专用成就记录；用户明确要求保存的 producer 数据应放入
+`PRIVATE`。
+
+Writer 必须按上表顺序输出紧凑 JSON；`achievements` 内按 `unlocked`、`total`、
+`hardcore_unlocked` 排序。只要严格 schema 有效，reader 应接受其他 member 顺序和
+JSON 空白。
+
+游玩时间与启动次数采用 baseline 加 session delta 同步。显式写回前，consumer 必须
+重新读取最新 ACTIVE `STATS` generation，只把本地 session delta 加到最新累计值；
+first-played 取已知最小值，last-played 取已知最大值。不得用过时的绝对 snapshot
+覆盖更新的累计计数。收藏、通关和成就汇总发生冲突时，由用户或前端显式决定。
+
 ### 6.5 显式操作与空间分配
 
-ROMX 不定义自动恢复、同步或写回事件。导入、覆盖、写回和删除只能由 consumer
-显式请求。用户界面如何确认、本地目标路径、冲突策略，以及如何映射到模拟器内存
-或前端目录，都不属于容器标准。
+容器层本身不会触发主机侧恢复、同步或写回。Consumer 可以实现 SAVE/CHEAT bundle
+profile 规定的无冲突首次恢复策略：只有全部列出的目标都不存在时才恢复，否则跳过
+整个操作。会覆盖本地数据的导入、冲突处理、写回和删除必须由 consumer 显式请求；
+关闭内容或退出时不得自动写回。用户界面如何确认、实际主机路径，以及如何映射到
+模拟器内存或前端目录，都不属于容器标准。
 
 创建 object 时分配一个 empty directory slot 和一个不重叠的 extent。普通替换必须
 保留已有 `data_offset` 与 `data_capacity`，只有新值能够放入时才能成功。删除会清空
@@ -532,17 +637,18 @@ directory slot，并为每个 object extent 预留有意义的容量。
 | Profile | Typical systems | Recommended capacity |
 |---|---|---:|
 | `compact` | 任何优先控制容器增量的平台 | 0（无 mutable region） |
-| `cartridge-detected` | GB/GBC/GBA、NES、SNES、MD、SMS、GG、PCE、N64 | `max(256 KiB, detected_save_capacity + 128 KiB + directory overhead)` |
-| `cartridge-unknown` | 无法识别存档容量的卡带 | 1 MiB |
-| `cartridge-large` | Nintendo DS | `max(4 MiB, detected_save_capacity + 1 MiB + directory overhead)` |
-| `disc-card-small` | PS1、PCE CD、Sega CD、Saturn、Dreamcast | 2 MiB |
-| `arcade` | FBNeo/MAME NVRAM、配置、金手指 | 1 MiB |
+| `cartridge-detected` | GB/GBC/GBA、NES、SNES、MD、SMS、GG、PCE、N64 | `max(512 KiB, detected_save_capacity + 256 KiB + directory overhead)` |
+| `cartridge-unknown` | 无法识别存档容量的卡带 | 通常 1 MiB；homebrew 为 2 MiB |
+| `cartridge-large` | Nintendo DS 卡带存档 | `max(16 MiB, detected_save_capacity + 2 MiB + directory overhead)` |
+| `disc-card-small` | PS1、PCE CD、Sega CD、Saturn、Dreamcast | 2 MiB；多 memory card/VMU 集合应选更大 profile |
+| `arcade` | FBNeo/MAME NVRAM、配置、金手指 | 通常 1 MiB；完整单游戏集合为 4 MiB |
 | `disc-card-medium` | PlayStation 2 | 32 MiB |
-| `directory-save-large` | PSP、GameCube、Wii、Nintendo 3DS | 64 MiB，显式选择 |
+| `directory-save-large` | PSP、GameCube、Wii、Nintendo 3DS、DSi/NAND/SD 存档 | 过滤后的单游戏文件为 64 MiB；只有根据实测数据显式选择时才使用 128 MiB 或更大容量 |
 
-非零的小型系统容量中，至少应为 cheat 与 statistics object 保留 128 KiB。导入现有
-数据时，分配的 object capacity 除当前字节大小和 directory overhead 外，还应包含
-预期增长空间。
+SAVE、CHEAT、STATS 和 PRIVATE object 使用彼此独立的 extent。非零的小型系统容量
+中，至少应保留 128 KiB 未分配空间给 CHEAT 与 STATS extent；producer 不得让 SAVE
+增长占用这部分预留。导入现有数据时，分配的 object capacity 除当前字节大小和
+directory overhead 外，还应包含预期增长空间。
 
 `compact` 是符合规范的 profile，可避免很小的 ROM 因空白预留而增大数倍。其他
 profile 也不保证所有未来存档集合都能放入。容器之外的存储以及如何选择更大容量

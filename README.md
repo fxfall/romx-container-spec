@@ -20,10 +20,12 @@ A `.romx` file can contain:
   SHA-256.
 
 Payload entries are never compressed. Mutable objects occupy indexed,
-fixed-capacity extents and contain opaque save, cheat, statistics, or private
-bytes. Explicit updates overwrite only the selected extent and its directory
-entry, without rewriting the immutable payload or moving the footer. When
-immutable SHA-256 is enabled, mutable updates do not require recalculating it.
+fixed-capacity extents. Their bytes are opaque by default; the specification
+also defines an optional uncompressed SAVE/CHEAT file-bundle profile and a
+strict versioned STATS JSON profile for interoperable consumers. Explicit
+updates overwrite only the selected extent and its directory entry, without
+rewriting the immutable payload or moving the footer. When immutable SHA-256
+is enabled, mutable updates do not require recalculating it.
 
 The entrypoint payload begins at file offset zero with no ROMX header or
 prefix. For a damaged footer, this preserves the possibility of separately
@@ -92,10 +94,11 @@ object 的提交与失败语义。Library API、VFS adapter、临时文件策略
 - 用于存档、金手指、统计与私有数据的可选固定容量 mutable region；
 - 精简的固定 128 字节 footer，保存区域大小与可选 immutable SHA-256。
 
-Payload entry 永远不压缩。Mutable object 使用带索引的固定容量 extent，内部保存
-opaque 的存档、金手指、统计或私有数据。显式更新只覆盖所选 extent 及其 directory
-entry，无需重写 immutable payload，也不会移动 footer。启用 immutable SHA-256 后，
-mutable 更新不需要重新计算它。
+Payload entry 永远不压缩。Mutable object 使用带索引的固定容量 extent，内部字节
+默认 opaque；规范同时定义可选的无压缩 SAVE/CHEAT 文件 bundle profile 和严格、
+版本化的 STATS JSON profile，供 consumer 互操作。显式更新只覆盖所选 extent 及其
+directory entry，无需重写 immutable payload，也不会移动 footer。启用 immutable
+SHA-256 后，mutable 更新不需要重新计算它。
 
 Entrypoint payload 从文件偏移零开始，前面没有 ROMX header 或 prefix。Footer 损坏
 时，这一规则保留了在明确标记为未验证的 salvage mode 中单独识别并暴露准确原生
